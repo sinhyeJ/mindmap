@@ -6,6 +6,7 @@
 <link rel="icon" id="favicon" type="image/png">
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Nanum+Gothic&family=Nanum+Gothic+Coding&family=Nanum+Myeongjo&family=Nanum+Pen+Script&family=Nanum+Brush+Script&family=Noto+Sans+KR&family=Noto+Serif+KR&family=Do+Hyeon&family=Jua&family=Cute+Font&family=Hi+Melody&family=Single+Day&family=Gugi&family=Stylish&family=Sunflower:wght@300;500;700&family=East+Sea+Dokdo&family=Gamja+Flower&family=Gaegu&family=Poor+Story&family=Yeon+Sung&family=Song+Myung&family=Black+Han+Sans&family=IBM+Plex+Sans+KR&display=swap" rel="stylesheet">
 <style>
@@ -84,6 +85,21 @@
   font-weight: normal;
   font-display: swap;
 }
+
+/* ── 로그인 오버레이 ── */
+#login-overlay{position:fixed;inset:0;background:#0d1f0d;z-index:9999;display:flex;align-items:center;justify-content:center;}
+#login-box{background:#1a2e1a;border:2.5px solid #2a5a2a;border-radius:16px;padding:40px 36px;width:340px;display:flex;flex-direction:column;gap:16px;align-items:center;}
+#login-box .logo-wrap{display:flex;align-items:center;gap:10px;margin-bottom:4px;}
+#login-box .logo-title{font-size:26px;font-family:'Yeon Sung',sans-serif;color:#ffffff;letter-spacing:1px;}
+#login-box h2{font-size:15px;color:#81c784;font-weight:400;margin:0;}
+#login-box input{width:100%;background:#111;border:1px solid #2a5a2a;border-radius:8px;color:#eee;font-size:14px;font-family:inherit;padding:11px 14px;outline:none;box-sizing:border-box;transition:border .15s;}
+#login-box input:focus{border-color:#4caf50;}
+#login-box .btn-primary{width:100%;background:#2e7d32;color:#fff;border:none;border-radius:8px;padding:12px;font-size:15px;font-family:inherit;cursor:pointer;transition:background .15s;}
+#login-box .btn-primary:hover{background:#388e3c;}
+#login-box .btn-secondary{background:none;border:none;color:#81c784;font-size:13px;font-family:inherit;cursor:pointer;text-decoration:underline;}
+#login-box .err{color:#ef9a9a;font-size:13px;text-align:center;min-height:18px;}
+#login-box .divider{color:#555;font-size:12px;}
+
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Yeon Sung','Jua','Malgun Gothic','Apple SD Gothic Neo',sans-serif;background:#111;color:#eee;height:100vh;display:flex;flex-direction:column;overflow:hidden}
 
@@ -110,17 +126,17 @@ body{font-family:'Yeon Sung','Jua','Malgun Gothic','Apple SD Gothic Neo',sans-se
 
 /* ── 툴바 ── */
 .toolbar{display:flex;gap:5px;padding:6px 10px;background:#1a1a1a;flex-wrap:wrap;align-items:center;flex-shrink:0;border-bottom:1px solid #333}
-.toolbar button{background:#2a2a2a;color:#ddd;border:1px solid #444;border-radius:5px;padding:4px 9px;font-size:12px;cursor:pointer;font-family:inherit;transition:background .1s}
+.toolbar button{background:#2a2a2a;color:#ddd;border:1px solid #444;border-radius:5px;padding:5px 10px;font-size:14px;cursor:pointer;font-family:inherit;transition:background .1s}
 .toolbar button:hover{background:#3a3a3a;border-color:#666}
 .toolbar button.active{background:#1f5c3f;border-color:#4a9;color:#fff}
 .toolbar button:disabled{opacity:.4;cursor:not-allowed}
 .toolbar button.danger{border-color:#8b3a3a;color:#f99}
 .toolbar button.danger:hover{background:#5a2020}
-.toolbar select{background:#2a2a2a;color:#ddd;border:1px solid #444;border-radius:5px;padding:4px 7px;font-size:12px;cursor:pointer;font-family:inherit}
+.toolbar select{background:#2a2a2a;color:#ddd;border:1px solid #444;border-radius:5px;padding:5px 8px;font-size:14px;cursor:pointer;font-family:inherit}
 .toolbar input[type=color]{width:28px;height:26px;padding:1px;border:1px solid #444;border-radius:4px;background:#2a2a2a;cursor:pointer}
-.toolbar input[type=number]{width:46px;background:#2a2a2a;color:#ddd;border:1px solid #444;border-radius:5px;padding:4px 5px;font-size:12px;text-align:center;font-family:inherit}
+.toolbar input[type=number]{width:46px;background:#2a2a2a;color:#ddd;border:1px solid #444;border-radius:5px;padding:5px 5px;font-size:14px;text-align:center;font-family:inherit}
 .toolbar .sep{width:1px;height:22px;background:#444;margin:0 3px;flex-shrink:0}
-.toolbar label{font-size:11px;color:#888}
+.toolbar label{font-size:13px;color:#888}
 .style-section{display:flex;align-items:center;gap:5px;padding:2px 8px;border:1px solid #333;border-radius:6px;margin-right:2px}
 .style-section .sec-label{font-size:10px;color:#666;margin-right:2px;white-space:nowrap}
 .hint{font-size:11px;color:#555;margin-left:4px}
@@ -181,13 +197,19 @@ body{font-family:'Yeon Sung','Jua','Malgun Gothic','Apple SD Gothic Neo',sans-se
 #folder-popup .fp-item.active{color:#fff;background:#1a2a1a;}
 #canvas{flex:1;position:relative;background:#1a3d2b;overflow:hidden;cursor:grab;outline:none;}
 /* ── 스크롤바 ── */
-#scroll-v{position:absolute;top:4px;right:4px;bottom:14px;width:8px;background:rgba(0,0,0,0.2);border-radius:4px;z-index:600;opacity:0.5;transition:opacity .2s;}
-#scroll-h{position:absolute;left:4px;right:14px;bottom:4px;height:8px;background:rgba(0,0,0,0.2);border-radius:4px;z-index:600;opacity:0.5;transition:opacity .2s;}
+#scroll-v{position:absolute;top:18px;right:4px;bottom:40px;width:8px;background:rgba(0,0,0,0.2);border-radius:4px;z-index:600;opacity:0.5;transition:opacity .2s;}
+#scroll-h{position:absolute;left:18px;right:40px;bottom:4px;height:8px;background:rgba(0,0,0,0.2);border-radius:4px;z-index:600;opacity:0.5;transition:opacity .2s;}
 #scroll-v:hover,#scroll-h:hover,#canvas:hover #scroll-v,#canvas:hover #scroll-h{opacity:1;}
 #scroll-v-thumb{position:absolute;left:0;width:100%;min-height:20px;background:rgba(255,255,255,0.4);border-radius:4px;cursor:pointer;transition:background .15s;}
 #scroll-h-thumb{position:absolute;top:0;height:100%;min-width:20px;background:rgba(255,255,255,0.4);border-radius:4px;cursor:pointer;transition:background .15s;}
 #scroll-v-thumb:hover,#scroll-h-thumb:hover{background:rgba(255,255,255,0.6);}
 #scroll-v-thumb:active,#scroll-h-thumb:active{background:rgba(255,255,255,0.75);}
+.scroll-arrow{position:absolute;z-index:601;width:16px;height:16px;background:rgba(40,40,40,0.7);border:none;border-radius:3px;color:rgba(255,255,255,0.6);font-size:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;opacity:0.5;transition:opacity .2s,background .15s;}
+.scroll-arrow:hover{background:rgba(80,80,80,0.9);color:#fff;opacity:1;}
+#scroll-v-up{right:4px;top:0px;}
+#scroll-v-down{right:4px;bottom:22px;}
+#scroll-h-left{left:0px;bottom:4px;}
+#scroll-h-right{right:22px;bottom:4px;}
 #canvas.grabbing{cursor:grabbing}
 #world{position:absolute;top:0;left:0;width:100%;height:100%;transform-origin:0 0}
 #mm-svg{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;overflow:visible}
@@ -207,10 +229,10 @@ body{font-family:'Yeon Sung','Jua','Malgun Gothic','Apple SD Gothic Neo',sans-se
 
 /* ── 컨텍스트 메뉴 ── */
 #ctx-menu{position:fixed;background:#222;border:1px solid #555;border-radius:8px;padding:4px 0;z-index:9999;display:none;min-width:160px;box-shadow:0 8px 24px rgba(0,0,0,0.7)}
-#ctx-menu div{padding:8px 16px;font-size:12px;cursor:pointer;color:#ddd}
+#ctx-menu div{padding:5px 14px;font-size:12px;cursor:pointer;color:#ddd}
 #ctx-menu div:hover{background:#333}
 #ctx-menu div.danger{color:#f99}
-#ctx-menu .ctx-sep{height:1px;background:#444;margin:3px 0;padding:0}
+#ctx-menu .ctx-sep{height:1px;background:#444;margin:2px 0;padding:0}
 #status{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);font-size:11px;color:rgba(255,255,255,0.25);pointer-events:none;white-space:nowrap}
 .resize-handle{position:absolute;width:6px;height:6px;background:rgba(255,255,255,0.6);border:1px solid rgba(255,255,255,0.8);border-radius:2px;z-index:500;box-shadow:0 1px 3px rgba(0,0,0,0.4);transition:background .15s}
 .resize-handle:hover{background:rgba(255,255,255,0.95);}
@@ -221,6 +243,84 @@ body{font-family:'Yeon Sung','Jua','Malgun Gothic','Apple SD Gothic Neo',sans-se
 </style>
 </head>
 <body>
+
+
+
+<!-- ── 9매트릭스 미리보기 ── -->
+<div id="matrix-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:8000;align-items:center;justify-content:center;flex-direction:column;gap:16px;">
+  <div style="background:#1a2e1a;border:1.5px solid #2a5a2a;border-radius:12px;padding:20px;width:90vw;max-width:900px;max-height:90vh;display:flex;flex-direction:column;gap:12px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <h2 style="color:#fff;font-size:16px;font-family:'Yeon Sung',sans-serif;display:flex;align-items:center;gap:8px;"><svg width="20" height="20" viewBox="0 0 48 48" style="flex-shrink:0"><rect x="2" y="2" width="44" height="44" rx="8" fill="white" stroke="#2E7D32" stroke-width="3"/><line x1="17" y1="2" x2="17" y2="46" stroke="#2E7D32" stroke-width="2.5"/><line x1="31" y1="2" x2="31" y2="46" stroke="#2E7D32" stroke-width="2.5"/><line x1="2" y1="17" x2="46" y2="17" stroke="#2E7D32" stroke-width="2.5"/><line x1="2" y1="31" x2="46" y2="31" stroke="#2E7D32" stroke-width="2.5"/><rect x="17" y="17" width="14" height="14" fill="#2E7D32"/></svg> 표 미리보기</h2>
+      <div style="display:flex;gap:8px;">
+        <button onclick="copyMatrixToClipboard()" style="background:#1a3a4a;color:#7ecfff;border:1px solid #2a6a8a;border-radius:6px;padding:6px 14px;font-size:13px;cursor:pointer;font-family:inherit;margin-right:6px;">📋 클립보드 복사</button>
+        <button onclick="downloadMatrix()" style="background:#2e7d32;color:#fff;border:none;border-radius:6px;padding:6px 16px;font-size:13px;cursor:pointer;font-family:inherit;">⬇️ PNG 저장</button>
+        <div style="display:flex;align-items:center;gap:5px;background:#111;border-radius:6px;padding:4px 10px;border:1px solid #333;">
+          <span style="color:#888;font-size:10px;font-family:inherit;">글자</span>
+          <select id="matrix-font-select" onchange="drawMatrix(window._matrixCenterNodeId)" style="background:#111;color:#ddd;border:none;font-size:11px;outline:none;cursor:pointer;font-family:inherit;">
+            <option value="'Malgun Gothic','Apple SD Gothic Neo',sans-serif">맑은 고딕</option>
+            <option value="'NanumGothic','나눔고딕',sans-serif">나눔고딕</option>
+            <option value="'Batang','바탕',serif">명조</option>
+            <option value="'YES24',sans-serif">예스체</option>
+            <option value="'GaramYeonkkot',sans-serif">가람연꽃</option>
+            <option value="'OnglipRyuttung',sans-serif">온글잎 류뚱체</option>
+            <option value="'NationalParkKomi',sans-serif">국립공원 꼬미</option>
+            <option value="'GyurisDiary',sans-serif">귀리의 일기</option>
+            <option value="'KimYui',sans-serif">김유이체</option>
+            <option value="'OnglipUiyeon',sans-serif">온글잎 의연체</option>
+            <option value="'OmyuDaYeppeum',sans-serif">오뮤 다예쁨체</option>
+            <option value="'GangwonEduHyeonokSaem',sans-serif">강원교육튼튼체</option>
+            <option value="'UhbeeJjiba',sans-serif">어비 찌바체</option>
+          </select>
+          <button onclick="matrixFontResize(-1)" title="글자 작게" style="background:#222;color:#aaa;border:1px solid #444;border-radius:4px;width:24px;height:24px;font-size:12px;cursor:pointer;line-height:1;padding:0;">A↓</button>
+          <button onclick="matrixFontResize(1)" title="글자 크게" style="background:#222;color:#ddd;border:1px solid #444;border-radius:4px;width:24px;height:24px;font-size:12px;cursor:pointer;line-height:1;padding:0;">A↑</button>
+        </div>
+        <button onclick="closeMatrixModal()" style="background:none;border:none;color:#888;font-size:20px;cursor:pointer;">✕</button>
+      </div>
+    </div>
+    <div style="overflow:auto;flex:1;display:flex;justify-content:center;">
+      <canvas id="matrix-canvas" style="display:block;max-width:100%;border-radius:8px;"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- ── 관리자 패널 ── -->
+<div id="admin-panel" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9000;align-items:center;justify-content:center;">
+  <div style="background:#1a2e1a;border:1.5px solid #2a5a2a;border-radius:16px;padding:32px;width:500px;max-height:80vh;display:flex;flex-direction:column;gap:16px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <h2 style="color:#fff;font-size:18px;font-family:'Yeon Sung',sans-serif;">👥 회원 관리</h2>
+      <button onclick="closeAdminPanel()" style="background:none;border:none;color:#888;font-size:20px;cursor:pointer;">✕</button>
+    </div>
+    <div id="admin-stats" style="background:#0d1a0d;border-radius:8px;padding:12px;color:#81c784;font-size:14px;"></div>
+    <div id="admin-list" style="overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:8px;"></div>
+  </div>
+</div>
+
+<!-- ── 로그인 오버레이 ── -->
+<div id="login-overlay">
+  <div id="login-box">
+    <div class="logo-wrap">
+      <svg width="36" height="36" viewBox="0 0 64 64">
+        <rect x="2" y="2" width="60" height="60" rx="12" fill="#111" stroke="rgba(255,255,255,0.9)" stroke-width="3.5"/>
+        <polyline points="17,47 17,17 32,29 47,17 47,47" fill="none" stroke="white" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="17" cy="17" r="5.5" fill="#f0c040"/>
+        <circle cx="47" cy="17" r="5.5" fill="#4ab8ff"/>
+        <circle cx="32" cy="29" r="4.5" fill="#a0ffb0"/>
+        <circle cx="17" cy="47" r="5.5" fill="#ffffff"/>
+        <circle cx="47" cy="47" r="5.5" fill="#ffffff"/>
+      </svg>
+      <span class="logo-title">마인드맵 에디터</span>
+    </div>
+    <h2 id="login-subtitle">로그인하고 나만의 마인드맵을 시작하세요</h2>
+    <input type="email" id="login-email" placeholder="이메일" autocomplete="email"/>
+    <input type="password" id="login-pw" placeholder="비밀번호"/>
+    <div class="err" id="login-err"></div>
+    <button class="btn-primary" id="login-btn" onclick="doLogin()">로그인</button>
+    <span class="divider">──────────────</span>
+    <button class="btn-secondary" onclick="toggleSignup()">계정이 없으신가요? 회원가입</button>
+  </div>
+</div>
+
+
 
 <!-- 탭 선택 -->
 <div id="tab-bar">
@@ -235,8 +335,11 @@ body{font-family:'Yeon Sung','Jua','Malgun Gothic','Apple SD Gothic Neo',sans-se
   </svg>
   <span id="map-title-display">마인드맵</span>
   <div id="tab-bar-right">
-    <button class="tab-util-btn" onclick="resetApiKey()" title="AI API 키 재설정">🔑 키 재설정</button>
+    <button class="tab-util-btn" id="key-reset-btn" onclick="resetApiKey()" title="AI API 키 재설정" style="display:none;">🔑 키 재설정</button>
     <button class="tab-util-btn" onclick="cloudSave()" title="클라우드 저장" style="font-size:14px;">☁️</button>
+    <button class="tab-util-btn" id="migrate-btn" onclick="migrateOldData()" title="기존 데이터 가져오기" style="font-size:12px;color:#ffcc80;display:none;">📦 기존데이터 가져오기</button>
+    <button class="tab-util-btn" id="admin-btn" onclick="showAdminPanel()" style="font-size:12px;color:#ffb74d;display:none;">👥 관리자</button>
+    <button class="tab-util-btn" onclick="doLogout()" title="로그아웃" style="font-size:12px;color:#81c784;">로그아웃</button>
     <button class="tab-util-btn" onclick="cloudLoad()" title="클라우드 불러오기" style="font-size:14px;">🔄</button>
     <button class="tab-util-btn" onclick="undo()" title="취소 (Ctrl+Z)" style="font-size:16px;">↩</button>
     <button class="tab-util-btn" onclick="redo()" title="재실행 (Ctrl+Y)" style="font-size:16px;">↪</button>
@@ -254,33 +357,30 @@ body{font-family:'Yeon Sung','Jua','Malgun Gothic','Apple SD Gothic Neo',sans-se
 
 <!-- 파일 툴바 -->
 <div id="tb-file" class="toolbar">
-  <button onclick="saveMap()">💾 저장</button>
-  <button onclick="loadMap()">📂 불러오기</button>
   <button onclick="cloudSave()">☁️ 클라우드 저장</button>
   <button onclick="cloudLoad()">🔄 클라우드 불러오기</button>
   <button onclick="exportPNG(this)">📋 PNG 내보내기</button>
+  <button onclick="showMatrixPreview()"><svg width="16" height="16" viewBox="0 0 48 48" style="vertical-align:middle;margin-right:4px"><rect x="2" y="2" width="44" height="44" rx="8" fill="white" stroke="#2E7D32" stroke-width="3"/><line x1="17" y1="2" x2="17" y2="46" stroke="#2E7D32" stroke-width="2.5"/><line x1="31" y1="2" x2="31" y2="46" stroke="#2E7D32" stroke-width="2.5"/><line x1="2" y1="17" x2="46" y2="17" stroke="#2E7D32" stroke-width="2.5"/><line x1="2" y1="31" x2="46" y2="31" stroke="#2E7D32" stroke-width="2.5"/><rect x="17" y="17" width="14" height="14" fill="#2E7D32"/></svg> 표 내보내기</button>
 </div>
 
 <!-- 배치 툴바 -->
 <div id="tb-layout" class="toolbar" style="display:none">
   <label>방향:</label>
   <select id="dir-pick" onchange="smartLayout()">
-    <option value="radial">🔵 방사형</option>
-    <option value="right-radial">▶ 오른쪽 방사형</option>
-    <option value="left-radial">◀ 왼쪽 방사형</option>
+    <option value="both">↔ 양방향 방사형</option>
+    <option value="right-radial">→ 오른쪽 방사형</option>
+    <option value="left-radial">← 왼쪽 방사형</option>
+    <option value="down">↓ 아래쪽 조직도형</option>
+    <option value="up">↑ 위쪽 조직도형</option>
     <option value="right">▶▶ 오른쪽 트리형</option>
     <option value="left">◀◀ 왼쪽 트리형</option>
     <option value="right-hier">⊢ 오른쪽 계층형</option>
     <option value="left-hier">⊣ 왼쪽 계층형</option>
-    <option value="both">↔ 양방향 트리</option>
-    <option value="down">▼ 아래쪽 조직도형</option>
-    <option value="up">▲ 위쪽 조직도형</option>
+    <option value="radial">∫ 양방향 곡선형</option>
   </select>
-  <button onclick="smartLayout()">🔄 다시 배치</button>
   <button onclick="fitView()">⊞ 화면 맞춤</button>
   <div style="display:inline-flex;border:1px solid #444;border-radius:5px;overflow:hidden;">
-    <button onclick="spreadNodes()" title="겹친 노드 간격 벌리기" style="background:#2a2a2a;color:#ddd;border:none;border-right:1px solid #444;padding:4px 9px;font-size:12px;cursor:pointer;">↕ 겹침 해제</button>
-    <input id="spread-gap" type="number" value="6" min="1" max="200" onchange="spreadNodes()" style="width:46px;text-align:center;background:#2a2a2a;color:#ddd;border:none;padding:4px 5px;font-size:12px;outline:none;" title="겹침 해제 간격(px)">
+    <button onclick="spreadNodes()" title="겹친 노드 간격 벌리기" style="background:#2a2a2a;color:#ddd;border:none;border-radius:6px;padding:4px 9px;font-size:14px;cursor:pointer;">↕ 겹침 해제</button>
   </div>
   <div class="style-section" style="margin-left:4px;">
     <span class="sec-label">가지 선</span>
@@ -352,7 +452,7 @@ body{font-family:'Yeon Sung','Jua','Malgun Gothic','Apple SD Gothic Neo',sans-se
   <div class="style-section">
     <span class="sec-label">글자</span>
     <div id="font-picker" style="position:relative;display:inline-block;">
-      <button id="font-btn" onclick="toggleFontPicker()" style="width:130px;text-align:left;padding:4px 8px;font-size:12px;display:flex;align-items:center;justify-content:space-between;gap:4px;">
+      <button id="font-btn" onclick="toggleFontPicker()" style="width:130px;text-align:left;padding:5px 8px;font-size:14px;display:flex;align-items:center;justify-content:space-between;gap:4px;">
         <span id="font-label" style="overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">맑은 고딕</span>
         <span style="flex-shrink:0">▾</span>
       </button>
@@ -397,6 +497,10 @@ body{font-family:'Yeon Sung','Jua','Malgun Gothic','Apple SD Gothic Neo',sans-se
   <div id="status">Enter:자식추가 | Tab:형제추가 | Del:삭제 | F2:편집 | ↑↓←→:탐색 | Ctrl+Z/Y:취소/재실행</div>
   <div id="scroll-v"><div id="scroll-v-thumb"></div></div>
   <div id="scroll-h"><div id="scroll-h-thumb"></div></div>
+  <button class="scroll-arrow" id="scroll-v-up"   onclick="scrollStep(0,80)">▲</button>
+  <button class="scroll-arrow" id="scroll-v-down" onclick="scrollStep(0,-80)">▼</button>
+  <button class="scroll-arrow" id="scroll-h-left"  onclick="scrollStep(80,0)">◀</button>
+  <button class="scroll-arrow" id="scroll-h-right" onclick="scrollStep(-80,0)">▶</button>
 </div>
 
 <!-- 하단 맵 탭 바 -->
@@ -411,11 +515,13 @@ body{font-family:'Yeon Sung','Jua','Malgun Gothic','Apple SD Gothic Neo',sans-se
   <div onclick="addSibling()">↩ 형제 노드 추가</div>
   <div onclick="addIndependentAtCtx()">🆕 독립 토픽 추가</div>
   <div class="ctx-sep"></div>
+  <div onclick="showMatrixFromCtx()" style="color:#81c784;display:flex;align-items:center;gap:8px;"><svg width="14" height="14" viewBox="0 0 48 48" style="flex-shrink:0"><rect x="2" y="2" width="44" height="44" rx="8" fill="white" stroke="#2E7D32" stroke-width="3"/><line x1="17" y1="2" x2="17" y2="46" stroke="#2E7D32" stroke-width="2.5"/><line x1="31" y1="2" x2="31" y2="46" stroke="#2E7D32" stroke-width="2.5"/><line x1="2" y1="17" x2="46" y2="17" stroke="#2E7D32" stroke-width="2.5"/><line x1="2" y1="31" x2="46" y2="31" stroke="#2E7D32" stroke-width="2.5"/><rect x="17" y="17" width="14" height="14" fill="#2E7D32"/></svg> 표 내보내기</div>
+  <div class="ctx-sep"></div>
   <div onclick="startEditSelected()">✏️ 텍스트 편집 (F2)</div>
   <div onclick="removeNodeImage()">🖼 이미지 제거</div>
   <div class="ctx-sep"></div>
-  <div style="padding:4px 12px 2px;font-size:10px;color:#888;">── 가로 정렬 ──</div>
-  <div style="display:flex;gap:0;padding:2px 8px 4px;">
+
+  <div style="display:flex;gap:0;padding:1px 8px 2px;">
     <button onclick="setAlign('left')"   id="ctx-align-left"   style="flex:1;background:#333;color:#ddd;border:1px solid #555;border-radius:5px 0 0 5px;padding:6px 0;cursor:pointer;display:flex;align-items:center;justify-content:center;" title="왼쪽 정렬">
       <svg width="20" height="16" viewBox="0 0 20 16"><line x1="2" y1="3" x2="18" y2="3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><line x1="2" y1="8" x2="13" y2="8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><line x1="2" y1="13" x2="16" y2="13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
     </button>
@@ -426,8 +532,8 @@ body{font-family:'Yeon Sung','Jua','Malgun Gothic','Apple SD Gothic Neo',sans-se
       <svg width="20" height="16" viewBox="0 0 20 16"><line x1="2" y1="3" x2="18" y2="3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><line x1="7" y1="8" x2="18" y2="8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><line x1="4" y1="13" x2="18" y2="13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
     </button>
   </div>
-  <div style="padding:2px 12px 2px;font-size:10px;color:#888;">── 세로 정렬 ──</div>
-  <div style="display:flex;gap:0;padding:2px 8px 6px;">
+
+  <div style="display:flex;gap:0;padding:1px 8px 3px;">
     <button onclick="setVertAlign('top')"    id="ctx-valign-top"    style="flex:1;background:#333;color:#ddd;border:1px solid #555;border-radius:5px 0 0 5px;padding:6px 0;cursor:pointer;display:flex;align-items:center;justify-content:center;" title="위쪽 정렬">
       <svg width="20" height="20" viewBox="0 0 20 20"><rect x="3" y="2" width="14" height="16" rx="1" fill="none" stroke="currentColor" stroke-width="1.2"/><line x1="6" y1="6" x2="14" y2="6" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/><line x1="6" y1="9" x2="14" y2="9" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>
     </button>
@@ -440,6 +546,7 @@ body{font-family:'Yeon Sung','Jua','Malgun Gothic','Apple SD Gothic Neo',sans-se
   </div>
   <div class="ctx-sep"></div>
   <div class="danger" onclick="deleteNode()">🗑 삭제</div>
+
 </div>
 
 <script>
@@ -1019,8 +1126,15 @@ function changeFontSize(delta) {
 // ── 노드 CSS 계산 ─────────────────────────────────────────
 function nodeStyle(node){
   const shapeRadius = {pill:'50px', rounded:'12px', rect:'0px', diamond:'0px'};
-  const r = shapeRadius[node.shape||'pill']||'50px';
   const isDiamond = node.shape==='diamond';
+  const r = isDiamond ? '0px' : (shapeRadius[node.shape||'pill']||'50px');
+  const pad = isDiamond ? '24px 24px'
+    : (node.parentId===null ? '12px 22px' : '7px 16px');
+  // 다이아몬드: 외부 div를 rotate(45deg)해서 테두리 포함 다이아몬드, 내부 텍스트는 -45deg 역회전
+  const transform = isDiamond
+    ? 'transform:translate(-50%,-50%) rotate(45deg);'
+    : 'transform:translate(-50%,-50%);';
+  const aspectRatio = isDiamond ? 'aspect-ratio:1/1;' : '';
   return `
     left:${node.x}px; top:${node.y}px;
     background:${node.color};
@@ -1032,8 +1146,9 @@ function nodeStyle(node){
     text-decoration:${[node.fontUnderline&&'underline',node.fontStrike&&'line-through'].filter(Boolean).join(' ')||'none'};
     border:${node.borderWidth||1.5}px ${node.borderStyle||'solid'} ${node.borderColor||'rgba(255,255,255,0.3)'};
     border-radius:${r};
-    ${isDiamond?'transform:translate(-50%,-50%) rotate(45deg);':'transform:translate(-50%,-50%);'}
-    padding:${node.parentId===null?'12px 22px':'7px 16px'};
+    ${transform}
+    ${aspectRatio}
+    padding:${pad};
     text-align:${node.textAlign||'center'};
     display:flex; flex-direction:column;
     justify-content:${{top:'flex-start',middle:'center',bottom:'flex-end'}[node.verticalAlign||'middle']||'center'};
@@ -1092,12 +1207,25 @@ function linePath(p, node){
     return `M${x1} ${y1} L${mx} ${y1} L${mx} ${y2} L${x2} ${y2}`;
   }
   if(ls==='tree-elbow'){
-    // 세로 먼저 → 가로 (ㄴ자 모양) - 트리형
     return `M${x1} ${y1} L${x1} ${y2} L${x2} ${y2}`;
   }
   if(ls==='sweep'){
-    // 아래로 먼저 내려가다 오른쪽으로 꺾이는 ㄴ자 곡선
     return `M${x1} ${y1} Q${x1} ${y2} ${x2} ${y2}`;
+  }
+  if(ls==='arc-curve'){
+    // 부모 노드 옆면 → 자식 노드 옆면으로 호를 그림
+    const sign = x2 > x1 ? 1 : -1;
+    const off = 65; // 노드 가장자리 오프셋 추정값
+    const sx = x1 + sign * off; // 부모 노드의 오른쪽/왼쪽 끝
+    const ex = x2 - sign * off; // 자식 노드의 왼쪽/오른쪽 끝
+    return `M${sx} ${y1} Q${sx} ${y2} ${ex} ${y2}`;
+  }
+  if(ls==='arc-curve-v'){
+    // 부모 옆면 → 자식 윗면/아랫면으로 크게 호를 그림
+    const signH = x2 > x1 ? 1 : -1;
+    const off = 65;
+    const sx = x1 + signH * off; // 부모 노드 옆면
+    return `M${sx} ${y1} Q${x2} ${y1} ${x2} ${y2}`;
   }
   const cpx=x1+(x2-x1)*0.55;
   return `M${x1} ${y1} C${cpx} ${y1} ${cpx} ${y2} ${x2} ${y2}`;
@@ -1155,7 +1283,32 @@ function renderSVG(){
       // 기타 스타일은 기존 방식 유지
       children.forEach(node=>{
         const path=document.createElementNS('http://www.w3.org/2000/svg','path');
-        path.setAttribute('d', linePath(p,node));
+        let d;
+        if((node.lineStyle||'curve')==='arc-curve'){
+          // 실제 DOM 노드 크기로 연결점 계산
+          const pEl=nodesDiv.querySelector(`[data-id="${p.id}"]`);
+          const cEl=nodesDiv.querySelector(`[data-id="${node.id}"]`);
+          const pOff=(pEl?pEl.offsetWidth:130)/2;
+          const cOff=(cEl?cEl.offsetWidth:130)/2;
+          const sign=node.x>p.x?1:-1;
+          const sx=p.x+sign*pOff;
+          const ex=node.x-sign*cOff;
+          d=`M${sx} ${p.y} Q${sx} ${node.y} ${ex} ${node.y}`;
+        } else if((node.lineStyle||'curve')==='arc-curve-v'){
+          // 부모 옆면 → 자식 위/아래로 크게 호
+          const pEl=nodesDiv.querySelector(`[data-id="${p.id}"]`);
+          const cEl=nodesDiv.querySelector(`[data-id="${node.id}"]`);
+          const pOffW=(pEl?pEl.offsetWidth:130)/2;
+          const cOffH=(cEl?cEl.offsetHeight:30)/2;
+          const signH=node.x>p.x?1:-1;
+          const signV=node.y>p.y?1:-1;
+          const sx=p.x+signH*pOffW;
+          const ey=node.y-signV*cOffH;
+          d=`M${sx} ${p.y} Q${node.x} ${p.y} ${node.x} ${ey}`;
+        } else {
+          d=linePath(p,node);
+        }
+        path.setAttribute('d', d);
         path.setAttribute('fill','none');
         path.setAttribute('stroke', node.lineColor||'rgba(255,255,255,0.3)');
         path.setAttribute('stroke-width', node.lineWidth||1.5);
@@ -1212,7 +1365,15 @@ function render(){
       }
       div.appendChild(img);
     } else {
-      div.textContent=node.text;
+      if(node.shape==='diamond'){
+        // 다이아몬드: 텍스트를 -45도 역회전 wrapper에 넣어 글자 똑바로 유지
+        const inner=document.createElement('div');
+        inner.style.cssText='transform:rotate(-45deg);display:flex;align-items:center;justify-content:center;width:100%;';
+        inner.textContent=node.text;
+        div.appendChild(inner);
+      } else {
+        div.textContent=node.text;
+      }
     }
     div.dataset.id=node.id;
     div.addEventListener('mousedown',e=>{if(e.button!==2) onNodeDown(e,node);});
@@ -1254,6 +1415,11 @@ function updateSel(){
   requestAnimationFrame(renderResizeHandles);
 }
 function updateTransform(){ world.style.transform=`translate(${panX}px,${panY}px) scale(${scale})`; updateScrollbars(); }
+
+function scrollStep(dx, dy){
+  panX += dx; panY += dy;
+  updateTransform();
+}
 
 // ── 스크롤바 갱신 ─────────────────────────────────────────
 function getWorldBounds(){
@@ -1361,7 +1527,7 @@ function updateScrollbars(){
 function startEdit(div,node){
   if(div.querySelector('textarea')) return;
   document.querySelectorAll('.resize-handle').forEach(h=>h.remove()); // 핸들 즉시 제거
-  div.textContent='';
+  div.innerHTML='';
   const ta=document.createElement('textarea');
   ta.value=node.text;
   const lines=node.text.split('\n');
@@ -1377,7 +1543,15 @@ function startEdit(div,node){
   ta.style.textDecoration=[node.fontUnderline&&'underline',node.fontStrike&&'line-through'].filter(Boolean).join(' ')||'none';
   ta.style.color=node.textColor||'#e8f5e9';
   ta.style.textAlign=node.textAlign||'center';
-  div.appendChild(ta); ta.focus(); ta.select();
+  if(node.shape==='diamond'){
+    const inner=document.createElement('div');
+    inner.style.cssText='transform:rotate(-45deg);width:100%;display:flex;justify-content:center;';
+    inner.appendChild(ta);
+    div.appendChild(inner);
+  } else {
+    div.appendChild(ta);
+  }
+  ta.focus(); ta.select();
   const resize=()=>{const ls=ta.value.split('\n');ta.rows=Math.max(1,ls.length);ta.style.width=Math.max(80,Math.max(...ls.map(l=>l.length))*fs*0.65)+'px';};
   ta.addEventListener('input',resize);
   let done=false;
@@ -1567,19 +1741,20 @@ function layoutSubtree(rootId){
   const root=getNode(rootId); if(!root) return;
   const dir=getDir();
 
-  if(dir==='right'||dir==='left'||dir==='both'){
+  if(dir==='right'||dir==='left'||dir==='both'||dir==='right-radial'||dir==='left-radial'){
     const parent=getNode(root.parentId);
-    let sign = dir==='right'?1 : dir==='left'?-1 : (parent?(root.x-parent.x>=0?1:-1):1);
+    let sign = (dir==='right'||dir==='right-radial')?1 : (dir==='left'||dir==='left-radial')?-1 : (parent?(root.x-parent.x>=0?1:-1):1);
+    const ls = (dir==='right'||dir==='left') ? 'tree-elbow' : (dir==='both'||dir==='right-radial'||dir==='left-radial') ? 'arc-curve' : 'curve';
     const layoutTree=(id,px,py)=>{
       const ch=getChildren(id); if(!ch.length) return;
-      const hgap=300;
+      const hgap=280;
       const totalH = ch.reduce((s,c)=> s + countLeaves(c.id)*subtreeLeafVgap(c.id), 0);
       let curY=py-totalH/2;
       ch.forEach(c=>{
         const lv=countLeaves(c.id);
         const vg=subtreeLeafVgap(c.id);
         c.x=px+sign*hgap; c.y=curY+lv*vg/2;
-        c.lineStyle='tree-elbow';
+        c.lineStyle=ls;
         layoutTree(c.id,c.x,c.y);
         curY+=lv*vg;
       });
@@ -1606,23 +1781,29 @@ function layoutSubtree(rootId){
     const sign=dir==='down'?1:-1;
     const layoutV=(id,px,py)=>{
       const ch=getChildren(id); if(!ch.length) return;
-      let curX=px-(countLeaves(id)-1)*130/2;
-      ch.forEach(c=>{const lv=countLeaves(c.id);c.x=curX+(lv-1)*130/2;c.y=py+sign*100;layoutV(c.id,c.x,c.y);curX+=lv*130;});
+      let curX=px-(countLeaves(id)-1)*150/2;
+      ch.forEach(c=>{const lv=countLeaves(c.id);c.x=curX+(lv-1)*150/2;c.y=py+sign*110;c.lineStyle='arc-curve-v';layoutV(c.id,c.x,c.y);curX+=lv*150;});
     };
     layoutV(rootId, root.x, root.y);
 
   } else {
-    // radial / right-radial / left-radial
+    // radial = 양방향 곡선 트리
     const parent=getNode(root.parentId);
-    let sa=-Math.PI/2, ea=Math.PI/2;
-    if(dir==='left-radial'){sa=Math.PI/2; ea=Math.PI*1.5;}
-    else if(dir==='radial'){sa=0-Math.PI; ea=Math.PI;}
-    else if(parent){const base=Math.atan2(root.y-parent.y,root.x-parent.x);const spread=Math.PI*0.8;sa=base-spread/2;ea=base+spread/2;}
-    const radial=(id,cx,cy,a1,a2,r)=>{
-      const ch=getChildren(id); if(!ch.length) return;
-      ch.forEach((c,i)=>{const a=a1+(a2-a1)*(i+.5)/ch.length;c.x=cx+Math.cos(a)*r;c.y=cy+Math.sin(a)*r;radial(c.id,c.x,c.y,a-(a2-a1)/(2*ch.length),a+(a2-a1)/(2*ch.length),r*.75);});
+    const sign = parent ? (root.x >= parent.x ? 1 : -1) : 1;
+    const layoutTree=(id,px,py,depth)=>{
+      const ch=getChildren(id);if(!ch.length)return;
+      const hgap=Math.max(220, 280-depth*20);
+      const totalH=ch.reduce((s,c)=>s+countLeaves(c.id)*subtreeLeafVgap(c.id),0);
+      let curY=py-totalH/2;
+      ch.forEach(c=>{
+        const lv=countLeaves(c.id),vg=subtreeLeafVgap(c.id);
+        c.x=px+sign*hgap; c.y=curY+lv*vg/2;
+        c.lineStyle='curve';
+        layoutTree(c.id,c.x,c.y,depth+1);
+        curY+=lv*vg;
+      });
     };
-    radial(rootId,root.x,root.y,sa,ea,180);
+    layoutTree(rootId,root.x,root.y,0);
   }
 
   fitView(); render();
@@ -1646,28 +1827,70 @@ function autoLayout(){
   };
   const layoutV=(id,px,py,sign)=>{
     const ch=getChildren(id);if(!ch.length)return;
-    let curX=px-(countLeaves(id)-1)*130/2;
-    ch.forEach(c=>{const lv=countLeaves(c.id);c.x=curX+(lv-1)*130/2;c.y=py+sign*100;layoutV(c.id,c.x,c.y,sign);curX+=lv*130;});
+    let curX=px-(countLeaves(id)-1)*150/2;
+    ch.forEach(c=>{const lv=countLeaves(c.id);c.x=curX+(lv-1)*150/2;c.y=py+sign*110;c.lineStyle='arc-curve-v';layoutV(c.id,c.x,c.y,sign);curX+=lv*150;});
   };
 
   if(dir==='radial'){
-    const radial=(id,cx,cy,sa,ea,r)=>{
-      const ch=getChildren(id);if(!ch.length)return;
-      ch.forEach((c,i)=>{const a=sa+(ea-sa)*(i+.5)/ch.length;c.x=cx+Math.cos(a)*r;c.y=cy+Math.sin(a)*r;radial(c.id,c.x,c.y,a-(ea-sa)/(2*ch.length),a+(ea-sa)/(2*ch.length),r*.72);});
+    // 방사형 = 양방향 곡선 트리
+    const ch=getChildren(root.id);
+    const right=ch.filter((_,i)=>i%2===0), left=ch.filter((_,i)=>i%2!==0);
+    const layoutSide=(children,sign)=>{
+      const layoutTree=(id,px,py,depth)=>{
+        const sch=getChildren(id);if(!sch.length)return;
+        const hgap=Math.max(220, 280-depth*20);
+        const totalH=sch.reduce((s,c)=>s+countLeaves(c.id)*subtreeLeafVgap(c.id),0);
+        let curY=py-totalH/2;
+        sch.forEach(c=>{
+          const lv=countLeaves(c.id),vg=subtreeLeafVgap(c.id);
+          c.x=px+sign*hgap; c.y=curY+lv*vg/2;
+          c.lineStyle='curve';
+          layoutTree(c.id,c.x,c.y,depth+1);
+          curY+=lv*vg;
+        });
+      };
+      const hgap=280;
+      const totalH=children.reduce((s,c)=>s+countLeaves(c.id)*subtreeLeafVgap(c.id),0);
+      let curY=root.y-totalH/2;
+      children.forEach(c=>{
+        const lv=countLeaves(c.id),vg=subtreeLeafVgap(c.id);
+        c.x=root.x+sign*hgap; c.y=curY+lv*vg/2;
+        c.lineStyle='curve';
+        layoutTree(c.id,c.x,c.y,1);
+        curY+=lv*vg;
+      });
     };
-    radial(root.id,root.x,root.y,-Math.PI,Math.PI,230);
+    layoutSide(right,1); layoutSide(left,-1);
   } else if(dir==='right-radial'){
-    const radial=(id,cx,cy,sa,ea,r)=>{
+    const layoutTree=(id,px,py,depth=1)=>{
       const ch=getChildren(id);if(!ch.length)return;
-      ch.forEach((c,i)=>{const a=sa+(ea-sa)*(i+.5)/ch.length;c.x=cx+Math.cos(a)*r;c.y=cy+Math.sin(a)*r;radial(c.id,c.x,c.y,a-(ea-sa)/(2*ch.length),a+(ea-sa)/(2*ch.length),r*.72);});
+      const hgap=Math.max(200,280-depth*20);
+      const totalH=ch.reduce((s,c)=>s+countLeaves(c.id)*subtreeLeafVgap(c.id),0);
+      let curY=py-totalH/2;
+      ch.forEach(c=>{
+        const lv=countLeaves(c.id),vg=subtreeLeafVgap(c.id);
+        c.x=px+hgap; c.y=curY+lv*vg/2;
+        c.lineStyle='arc-curve';
+        layoutTree(c.id,c.x,c.y,depth+1);
+        curY+=lv*vg;
+      });
     };
-    radial(root.id,root.x,root.y,-Math.PI/2,Math.PI/2,230);
+    layoutTree(root.id,root.x,root.y);
   } else if(dir==='left-radial'){
-    const radial=(id,cx,cy,sa,ea,r)=>{
+    const layoutTree=(id,px,py,depth=1)=>{
       const ch=getChildren(id);if(!ch.length)return;
-      ch.forEach((c,i)=>{const a=sa+(ea-sa)*(i+.5)/ch.length;c.x=cx+Math.cos(a)*r;c.y=cy+Math.sin(a)*r;radial(c.id,c.x,c.y,a-(ea-sa)/(2*ch.length),a+(ea-sa)/(2*ch.length),r*.72);});
+      const hgap=Math.max(200,280-depth*20);
+      const totalH=ch.reduce((s,c)=>s+countLeaves(c.id)*subtreeLeafVgap(c.id),0);
+      let curY=py-totalH/2;
+      ch.forEach(c=>{
+        const lv=countLeaves(c.id),vg=subtreeLeafVgap(c.id);
+        c.x=px-hgap; c.y=curY+lv*vg/2;
+        c.lineStyle='arc-curve';
+        layoutTree(c.id,c.x,c.y,depth+1);
+        curY+=lv*vg;
+      });
     };
-    radial(root.id,root.x,root.y,Math.PI/2,Math.PI*1.5,230);
+    layoutTree(root.id,root.x,root.y);
   } else if(dir==='right'){
     const layoutTree=(id,px,py)=>{
       const ch=getChildren(id);if(!ch.length)return;
@@ -1732,15 +1955,29 @@ function autoLayout(){
     const ch=getChildren(root.id);
     const right=ch.filter((_,i)=>i%2===0), left=ch.filter((_,i)=>i%2!==0);
     const layoutSide=(children,sign)=>{
-      const total=children.reduce((s,c)=>s+countLeaves(c.id),0);
-      let curY=root.y-(total-1)*70/2;
+      const layoutTree=(id,px,py)=>{
+        const sch=getChildren(id);if(!sch.length)return;
+        const totalH=sch.reduce((s,c)=>s+countLeaves(c.id)*subtreeLeafVgap(c.id),0);
+        let curY=py-totalH/2;
+        sch.forEach(c=>{
+          const lv=countLeaves(c.id),vg=subtreeLeafVgap(c.id);
+          c.x=px+sign*280; c.y=curY+lv*vg/2;
+          c.lineStyle='arc-curve';
+          layoutTree(c.id,c.x,c.y);
+          curY+=lv*vg;
+        });
+      };
+      const totalH=children.reduce((s,c)=>s+countLeaves(c.id)*subtreeLeafVgap(c.id),0);
+      let curY=root.y-totalH/2;
       children.forEach(c=>{
-        const lv=countLeaves(c.id);c.x=root.x+sign*200;c.y=curY+(lv-1)*70/2;
-        const sub=(id,px,py)=>{const sch=getChildren(id);if(!sch.length)return;let sy=py-(countLeaves(id)-1)*70/2;sch.forEach(sc=>{const slv=countLeaves(sc.id);sc.x=px+sign*200;sc.y=sy+(slv-1)*70/2;sub(sc.id,sc.x,sc.y);sy+=slv*70;});};
-        sub(c.id,c.x,c.y);curY+=lv*70;
+        const lv=countLeaves(c.id),vg=subtreeLeafVgap(c.id);
+        c.x=root.x+sign*280; c.y=curY+lv*vg/2;
+        c.lineStyle='arc-curve';
+        layoutTree(c.id,c.x,c.y);
+        curY+=lv*vg;
       });
     };
-    layoutSide(right,1);layoutSide(left,-1);
+    layoutSide(right,1); layoutSide(left,-1);
   } else if(dir==='down'){
     layoutV(root.id,root.x,root.y,1);
   } else if(dir==='up'){
@@ -1786,25 +2023,43 @@ function spreadNodes(){
     const children = getChildren(parentId).filter(c => isVisible(c) && targetIds.has(c.id));
     if(children.length < 2){ children.forEach(c=>spreadSiblings(c.id)); return; }
 
-    // Y 기준 정렬
-    children.sort((a,b) => a.y - b.y);
+    // 형제들의 배치 방향 감지: X 분산 vs Y 분산 비교
+    const xVals = children.map(c=>c.x), yVals = children.map(c=>c.y);
+    const xSpan = Math.max(...xVals) - Math.min(...xVals);
+    const ySpan = Math.max(...yVals) - Math.min(...yVals);
+    const horizontal = xSpan > ySpan; // 가로 배치면 X축으로 밀기
 
-    // 각 자식 노드의 DOM 높이 측정
-    const heights = children.map(c => {
-      const el = nodesDiv.querySelector(`[data-id="${c.id}"]`);
-      return el ? el.offsetHeight : 40;
-    });
-
-    // 형제들 사이 겹침 해소: 위→아래 순으로 밀어내기
-    for(let i=1; i<children.length; i++){
-      const prev = children[i-1], cur = children[i];
-      const prevH = heights[i-1]/2, curH = heights[i]/2;
-      const minDist = prevH + curH + GAP;
-      const dist = cur.y - prev.y;
-      if(dist < minDist){
-        const push = minDist - dist;
-        // i번째 이후 모든 형제를 아래로 밀기
-        for(let j=i; j<children.length; j++) children[j].y += push;
+    if(horizontal){
+      // X 기준 정렬 → 좌우로 밀기
+      children.sort((a,b) => a.x - b.x);
+      const widths = children.map(c => {
+        const el = nodesDiv.querySelector(`[data-id="${c.id}"]`);
+        return el ? el.offsetWidth : 100;
+      });
+      for(let i=1; i<children.length; i++){
+        const prev = children[i-1], cur = children[i];
+        const minDist = widths[i-1]/2 + widths[i]/2 + GAP;
+        const dist = cur.x - prev.x;
+        if(dist < minDist){
+          const push = minDist - dist;
+          for(let j=i; j<children.length; j++) children[j].x += push;
+        }
+      }
+    } else {
+      // Y 기준 정렬 → 위아래로 밀기
+      children.sort((a,b) => a.y - b.y);
+      const heights = children.map(c => {
+        const el = nodesDiv.querySelector(`[data-id="${c.id}"]`);
+        return el ? el.offsetHeight : 40;
+      });
+      for(let i=1; i<children.length; i++){
+        const prev = children[i-1], cur = children[i];
+        const minDist = heights[i-1]/2 + heights[i]/2 + GAP;
+        const dist = cur.y - prev.y;
+        if(dist < minDist){
+          const push = minDist - dist;
+          for(let j=i; j<children.length; j++) children[j].y += push;
+        }
       }
     }
 
@@ -2084,12 +2339,18 @@ function importFromText(){
         <div style="display:flex;align-items:center;gap:8px;">
           <span style="font-size:12px;color:#888;white-space:nowrap;">명령 (선택):</span>
           <div style="display:flex;gap:6px;flex-wrap:wrap;">
-            <button id="preset-insight"
-              onclick="setTxtPreset('insight')"
+            <button id="preset-insight"  onclick="setTxtPreset('insight')"
               style="background:#1a3a1a;color:#a0ffb0;border:1px solid #4aff7a;border-radius:20px;padding:4px 12px;font-size:11px;cursor:pointer;font-family:inherit;transition:all .15s;">💡 인사이트</button>
-            <button id="preset-summary"
-              onclick="setTxtPreset('summary')"
+            <button id="preset-summary"  onclick="setTxtPreset('summary')"
               style="background:#1a2a3a;color:#80cfff;border:1px solid #4ab8ff;border-radius:20px;padding:4px 12px;font-size:11px;cursor:pointer;font-family:inherit;transition:all .15s;">📌 핵심요약</button>
+            <button id="preset-full"     onclick="setTxtPreset('full')"
+              style="background:#2a1a1a;color:#ffb8a0;border:1px solid #ff7a4a;border-radius:20px;padding:4px 12px;font-size:11px;cursor:pointer;font-family:inherit;transition:all .15s;">📂 전체구조화</button>
+            <button id="preset-timeline" onclick="setTxtPreset('timeline')"
+              style="background:#1a1a3a;color:#c4b5fd;border:1px solid #7a5aff;border-radius:20px;padding:4px 12px;font-size:11px;cursor:pointer;font-family:inherit;transition:all .15s;">🕐 시간순</button>
+            <button id="preset-pros"     onclick="setTxtPreset('pros')"
+              style="background:#2a2a1a;color:#ffe08a;border:1px solid #d4a800;border-radius:20px;padding:4px 12px;font-size:11px;cursor:pointer;font-family:inherit;transition:all .15s;">⚖️ 장단점</button>
+            <button id="preset-action"   onclick="setTxtPreset('action')"
+              style="background:#1a2a1a;color:#80ffcc;border:1px solid #00d48a;border-radius:20px;padding:4px 12px;font-size:11px;cursor:pointer;font-family:inherit;transition:all .15s;">🚀 액션플랜</button>
           </div>
         </div>
         <textarea id="txt-cmd" placeholder="예시: 이 내용을 시간순으로 정리해줘 / 장단점 중심으로 분류해줘 / 행동 계획으로 만들어줘"
@@ -2113,17 +2374,22 @@ function importFromText(){
 
 function setTxtPreset(type){
   const cmdEl = document.getElementById('txt-cmd');
-  const btnInsight = document.getElementById('preset-insight');
-  const btnSummary = document.getElementById('preset-summary');
-  if(type==='insight'){
-    cmdEl.value = '인사이트 중심으로 정리해줘: 1단계는 카테고리명(카테고리설명), 2단계는 생각질문 / 인사이트 2줄 / 왜냐하면 구조로';
-    btnInsight.style.outline = '2px solid #4aff7a';
-    btnSummary.style.outline = 'none';
-  } else {
-    cmdEl.value = '핵심요약 중심으로 정리해줘: 1단계는 핵심 주제 카테고리, 2단계는 핵심 내용 1~2줄 요약 + 기억할 포인트 1줄 구조로';
-    btnSummary.style.outline = '2px solid #4ab8ff';
-    btnInsight.style.outline = 'none';
-  }
+  const presets = {
+    insight:  '인사이트 중심으로 정리해줘: 1단계는 카테고리명(카테고리설명), 2단계는 생각질문 / 인사이트 2줄 / 왜냐하면 구조로',
+    summary:  '핵심요약 중심으로 정리해줘: 1단계는 핵심 주제 카테고리, 2단계는 핵심 내용 1~2줄 요약 + 기억할 포인트 1줄 구조로',
+    full:     '전체 내용을 세부내용까지 빠짐없이 구조화해줘: 대주제 → 소주제 → 세부내용 3단계로 최대한 상세하게',
+    timeline: '시간 순서대로 구조화해줘: 1단계는 시기/단계명, 2단계는 그 시기의 핵심 사건·내용',
+    pros:     '장점과 단점을 마인드맵으로 정리해줘: 1단계는 장점/단점 카테고리, 2단계는 구체적 항목과 이유',
+    action:   '실행 가능한 액션플랜으로 만들어줘: 1단계는 실행 영역/카테고리, 2단계는 구체적 행동 항목과 체크포인트',
+  };
+  cmdEl.value = presets[type] || '';
+  // 모든 버튼 초기화 후 선택된 것만 하이라이트
+  ['insight','summary','full','timeline','pros','action'].forEach(k=>{
+    const btn = document.getElementById('preset-'+k);
+    if(btn) btn.style.outline = 'none';
+  });
+  const sel = document.getElementById('preset-'+type);
+  if(sel) sel.style.outline = '2px solid currentColor';
 }
 
 async function runTextToMindmap(){
@@ -2281,8 +2547,16 @@ function showImageCommandModal(base64, mediaType, previewUrl){
       <div style="font-size:15px;font-weight:bold;color:#c4b5fd;">🪄 이미지 → 마인드맵</div>
       <img src="${previewUrl}" style="width:100%;max-height:200px;object-fit:contain;border-radius:8px;border:1px solid #333;background:#111;">
       <div style="font-size:12px;color:#888;">명령을 입력하면 AI가 그에 맞게 마인드맵을 만들어요.</div>
+      <div style="display:flex;flex-wrap:wrap;gap:7px;">
+        <button onclick="imgSetPreset(this,'이 마인드맵과 똑같이 만들어줘 (구조와 글 모두 그대로)')"  style="background:#1a1a2e;color:#c4b5fd;border:1px solid #5a3fa0;border-radius:20px;padding:5px 12px;font-size:12px;cursor:pointer;font-family:inherit;">📋 똑같이 (구조·글)</button>
+        <button onclick="imgSetPreset(this,'핵심 내용을 마인드맵으로 정리해줘')"  style="background:#1a1a2e;color:#c4b5fd;border:1px solid #5a3fa0;border-radius:20px;padding:5px 12px;font-size:12px;cursor:pointer;font-family:inherit;">📌 핵심내용 정리</button>
+        <button onclick="imgSetPreset(this,'핵심 인사이트를 마인드맵으로 만들어줘')"    style="background:#1a1a2e;color:#c4b5fd;border:1px solid #5a3fa0;border-radius:20px;padding:5px 12px;font-size:12px;cursor:pointer;font-family:inherit;">💡 인사이트</button>
+        <button onclick="imgSetPreset(this,'장점과 단점을 마인드맵으로 정리해줘')"  style="background:#1a1a2e;color:#c4b5fd;border:1px solid #5a3fa0;border-radius:20px;padding:5px 12px;font-size:12px;cursor:pointer;font-family:inherit;">⚖️ 장단점</button>
+        <button onclick="imgSetPreset(this,'시간 순서대로 구조화해줘')"  style="background:#1a1a2e;color:#c4b5fd;border:1px solid #5a3fa0;border-radius:20px;padding:5px 12px;font-size:12px;cursor:pointer;font-family:inherit;">🕐 시간순</button>
+        <button onclick="imgSetPreset(this,'실행 가능한 액션 플랜으로 마인드맵을 만들어줘')" style="background:#1a1a2e;color:#c4b5fd;border:1px solid #5a3fa0;border-radius:20px;padding:5px 12px;font-size:12px;cursor:pointer;font-family:inherit;">🚀 액션플랜</button>
+      </div>
       <textarea id="img-cmd-input" placeholder="예시:&#10;• 이 마인드맵과 똑같이 만들어줘&#10;• 이 이미지의 핵심 내용을 마인드맵으로 정리해줘&#10;• 시간 순서대로 구조화해줘&#10;(비워두면 AI가 알아서 분석해요)"
-        style="background:#111;border:1px solid #555;border-radius:8px;color:#eee;font-size:13px;font-family:inherit;padding:12px;resize:vertical;min-height:100px;width:100%;outline:none;line-height:1.7;box-sizing:border-box;"></textarea>
+        style="background:#111;border:1px solid #555;border-radius:8px;color:#eee;font-size:13px;font-family:inherit;padding:12px;resize:vertical;min-height:80px;width:100%;outline:none;line-height:1.7;box-sizing:border-box;"></textarea>
       <div style="display:flex;gap:10px;justify-content:flex-end;">
         <button onclick="document.getElementById('img-cmd-modal').remove()"
           style="background:#333;color:#aaa;border:1px solid #555;border-radius:7px;padding:9px 20px;cursor:pointer;font-size:13px;font-family:inherit;">취소</button>
@@ -2300,6 +2574,15 @@ function showImageCommandModal(base64, mediaType, previewUrl){
   document.getElementById('img-cmd-input').addEventListener('keydown', e=>{
     if((e.ctrlKey||e.metaKey) && e.key==='Enter'){ e.preventDefault(); document.getElementById('img-cmd-ok').click(); }
   });
+}
+
+function imgSetPreset(btn, text){
+  document.getElementById('img-cmd-input').value = text;
+  // 선택된 버튼 하이라이트
+  btn.closest('div').querySelectorAll('button').forEach(b=>{
+    b.style.background='#1a1a2e'; b.style.color='#c4b5fd'; b.style.borderColor='#5a3fa0';
+  });
+  btn.style.background='#5a3fa0'; btn.style.color='#fff'; btn.style.borderColor='#9a7fd4';
 }
 
 async function runImageToMindmap(base64, mediaType, userCmd=''){
@@ -2492,6 +2775,672 @@ const FB_CONFIG = {
 
 let fbApp=null, fbDb=null;
 
+
+// ── Firebase Auth 로그인/회원가입 ──────────────────────────
+
+
+// ── 9매트릭스 내보내기 ─────────────────────────────────────
+function showMatrixFromCtx(){
+  ctxMenu.style.display='none';
+  if(!selectedId){ showToast('노드를 먼저 선택해주세요'); return; }
+  window._matrixFontScale = 1.0;
+  document.getElementById('matrix-modal').style.display='flex';
+  drawMatrix(selectedId);
+}
+
+function showMatrixPreview(){
+  window._matrixFontScale = 1.0;
+  document.getElementById('matrix-modal').style.display = 'flex';
+  drawMatrix();
+}
+function closeMatrixModal(){
+  document.getElementById('matrix-modal').style.display = 'none';
+}
+
+function getMatrixData(centerNodeId){
+  if(!nodes || nodes.length === 0) return null;
+  const root = centerNodeId
+    ? nodes.find(n => n.id === centerNodeId)
+    : nodes.find(n => n.parentId == null);
+  if(!root) return null;
+  const ch1 = nodes.filter(n => n.parentId === root.id).slice(0, 8);
+  // 각 ch1의 자식(ch2) + 빈 칸에 손자 노드 채우기
+  const subs = ch1.map(c => {
+    const ch2 = nodes.filter(n => n.parentId === c.id);
+    // ch2에 번호 붙이기: "1. 텍스트"
+    const numberedCh2 = ch2.map((s, i) => ({...s, text: (i+1) + '. ' + s.text}));
+    const result = numberedCh2.slice(0, 8);
+    // 빈 칸에 손자 노드(ch3) 채우기: "(1-1) 텍스트"
+    if(result.length < 8){
+      ch2.forEach((sub, pi2) => {
+        const ch3 = nodes.filter(n => n.parentId === sub.id);
+        ch3.forEach((g, gi) => {
+          if(result.length < 8){
+            result.push({...g, text: '(' + (pi2+1) + '-' + (gi+1) + ')' + String.fromCharCode(10) + g.text, _isSub: true, _level: 2, _origParent: sub.id, _pi: pi2, _gi: gi});
+          }
+        });
+      });
+    }
+    // 빈 칸에 증손자 노드(ch4) 채우기: "(1-1-1) 텍스트"
+    if(result.length < 8){
+      ch2.forEach((sub, pi2) => {
+        const ch3 = nodes.filter(n => n.parentId === sub.id);
+        ch3.forEach((g, gi) => {
+          const ch4 = nodes.filter(n => n.parentId === g.id);
+          ch4.forEach((gg, ggi) => {
+            if(result.length < 8){
+              result.push({...gg, text: '(' + (pi2+1) + '-' + (gi+1) + '-' + (ggi+1) + ')' + String.fromCharCode(10) + gg.text, _isSub: true, _level: 3, _pi: pi2, _gi: gi, _ggi: ggi});
+            }
+          });
+        });
+      });
+    }
+    return result.slice(0, 8);
+  });
+
+  // 각 ch2 항목의 총 자식 수 표시 (담긴 것 포함 전체)
+  const overflowInfo = ch1.map((c, pi) => {
+    const ch2 = nodes.filter(n => n.parentId === c.id);
+    const parts = [];
+    ch2.forEach((sub, si2) => {
+      const ch3 = nodes.filter(n => n.parentId === sub.id);
+      if(ch3.length > 0){
+        // ch3의 자식(ch4)이 있으면 가장 깊은 depth 표시
+        const maxCh4 = ch3.reduce((mx, g) => {
+          const ch4 = nodes.filter(n => n.parentId === g.id);
+          return ch4.length > 0 ? Math.max(mx, ch4.length) : mx;
+        }, 0);
+        const firstCh3WithCh4 = ch3.findIndex(g => nodes.filter(n => n.parentId === g.id).length > 0);
+        if(firstCh3WithCh4 >= 0){
+          const ch4len = nodes.filter(n => n.parentId === ch3[firstCh3WithCh4].id).length;
+          parts.push((si2+1) + '(..' + (si2+1) + '-' + (firstCh3WithCh4+1) + '-' + ch4len + ')');
+        } else {
+          parts.push((si2+1) + '(..' + (si2+1) + '-' + ch3.length + ')');
+        }
+      } else {
+        parts.push(String(si2+1));
+      }
+    });
+    return parts.length > 0 ? parts.join(' / ') : null;
+  });
+
+  return { root, ch1, subs, overflowInfo };
+}
+
+window._matrixFontScale = 1.0;
+function matrixFontResize(dir){
+  const scales = [0.6, 0.7, 0.8, 0.9, 1.0, 1.15, 1.3, 1.5, 1.7, 2.0];
+  let idx = scales.findIndex(s => Math.abs(s - window._matrixFontScale) < 0.01);
+  if(idx < 0) idx = 4;
+  idx = Math.max(0, Math.min(scales.length-1, idx + dir));
+  window._matrixFontScale = scales[idx];
+  drawMatrix(window._matrixCenterNodeId);
+}
+function drawMatrix(centerNodeId){
+  window._matrixCenterNodeId = centerNodeId;
+  const fontSelect = document.getElementById('matrix-font-select');
+  const selectedFont = fontSelect ? fontSelect.value : "'Malgun Gothic',sans-serif";
+  const FS = window._matrixFontScale || 1.0;
+  const data = getMatrixData(centerNodeId);
+  const canvas = document.getElementById('matrix-canvas');
+  const DPR = 2;
+  const CELL = 90;  // 각 작은 셀 크기
+  const BLOCK = CELL * 3; // 3x3 블록
+  const GAP = 0;
+  const MARGIN = 30; // 좌우 여백 균등
+  const TOTAL = BLOCK * 3 + GAP * 2 + MARGIN * 2; // 전체 크기 + 좌우 여백
+  canvas.width = TOTAL * DPR;
+  canvas.height = (TOTAL + 80) * DPR;
+  canvas.style.width = TOTAL + 'px';
+  canvas.style.height = (TOTAL + 80) + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(DPR, DPR);
+
+  // 배경 흰색
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(0, 0, TOTAL, TOTAL + 80);
+
+  const mapName = nodes.find(n=>n.parentId===null&&!n.hidden)?.text || '마인드맵';
+  const today = new Date().toLocaleDateString('ko-KR');
+
+  // Date 헤더
+  ctx.fillStyle = '#000';
+  ctx.font = 'bold 16px Arial';
+  ctx.textAlign = 'right';
+  ctx.fillText('Date : ' + today, TOTAL - 10, 30);
+
+  // Topic 박스
+  const topicY = 40;
+  ctx.strokeStyle = '#000';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(MARGIN, topicY, TOTAL - MARGIN*2, 40);
+  ctx.fillStyle = '#000';
+  ctx.font = `bold 18px ${selectedFont}`;
+  ctx.textAlign = 'left';
+  const currentMapName = data?.root?.text || maps.find(m=>m.id===activeMapId)?.name || '';
+  ctx.fillText('Topic : ' + currentMapName, MARGIN + 10, topicY + 26);
+
+  // 매트릭스 시작 Y
+  const matY = topicY + 50;
+
+  if(!data){
+    ctx.fillStyle = '#999';
+    ctx.font = '16px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText('마인드맵 데이터를 불러올 수 없어요 (nodes: ' + (nodes?nodes.length:0) + '개)', TOTAL/2, matY + 80);
+    return;
+  }
+  if(data.ch1.length === 0){
+    ctx.fillStyle = '#999';
+    ctx.font = '16px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText('1단계 자식 노드를 추가해주세요', TOTAL/2, matY + 100);
+    return;
+  }
+
+  // 9개 블록 위치 (3x3 배치)
+  // 블록 인덱스: 0=좌상, 1=상, 2=우상, 3=좌, 4=중앙, 5=우, 6=좌하, 7=하, 8=우하
+  // 자식 배치: 좌상=ch1[0], 상=ch1[1], 우상=ch1[2], 좌=ch1[3], 중앙=root, 우=ch1[4], 좌하=ch1[5], 하=ch1[6], 우하=ch1[7]
+  const blockOrder = [0,1,2,3,4,5,6,7,8]; // 블록 위치
+  const childForBlock = [0,1,2,3,-1,4,5,6,7]; // -1=root
+
+  const colors = {
+    header: ['#85B7EB','#ED93B1','#97C459','#EF9F27','#AFA9EC','#5DCAA5','#C0DD97','#B4B2A9'],
+    light:  ['#E3F2FD','#FCE4EC','#E8F5E9','#FFF3E0','#EDE7F6','#E0F7FA','#F1F8E9','#EFEBE9'],
+  };
+
+  for(let bi=0; bi<9; bi++){
+    const brow = Math.floor(bi/3);
+    const bcol = bi%3;
+    const bx = MARGIN + bcol*(BLOCK+GAP);
+    const by = matY + brow*(BLOCK+GAP);
+    const cidx = childForBlock[bi];
+    const isCenter = cidx === -1;
+    const child = isCenter ? null : data.ch1[cidx];
+    const subChildren = isCenter ? [] : (data.subs[cidx] || []);
+    const color = isCenter ? '#000' : colors.header[cidx % 8];
+    // 외부 블록 배경에 투명도 적용 (rgba 변환)
+    function hexToRgba(hex, alpha){
+      const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
+      return `rgba(${r},${g},${b},${alpha})`;
+    }
+    const lightColorBase = isCenter ? '#f5f5f5' : colors.light[cidx % 8];
+    const lightColor = isCenter ? lightColorBase : hexToRgba(lightColorBase, 0.75);
+
+    // 각 블록의 9개 셀
+    for(let si=0; si<9; si++){
+      const srow = Math.floor(si/3);
+      const scol = si%3;
+      const sx = bx + scol*CELL;
+      const sy = by + srow*CELL;
+      const isCenterCell = si===4;
+
+      // 셀 배경
+      const chMap = [0,1,2,3,-1,4,5,6,7];
+      if(isCenterCell){
+        ctx.fillStyle = isCenter ? '#111' : color;
+      } else if(isCenter){
+        // 중앙 블록 주변 8칸 = 각 자식 노드 파스텔 색상
+        const pastelColors = ['#E3F2FD','#FCE4EC','#E8F5E9','#FFF3E0','#EDE7F6','#E0F7FA','#F1F8E9','#EFEBE9'];
+        const chIdx = chMap[si];
+        ctx.fillStyle = chIdx >= 0 ? (pastelColors[chIdx % 8]||'#f5f5f5') : '#f5f5f5';
+      } else {
+        ctx.fillStyle = lightColor;
+      }
+      ctx.fillRect(sx, sy, CELL, CELL);
+
+      // 셀 테두리
+      // 중앙 블록: 모든 셀 검정선 / 나머지 블록: 중앙셀만 검정, 나머지 흐린 회색
+      if(isCenter){
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = isCenterCell ? 2.5 : 1.5;
+      } else {
+        ctx.strokeStyle = isCenterCell ? '#000' : '#ccc';
+        ctx.lineWidth = isCenterCell ? 2 : 0.7;
+      }
+      ctx.strokeRect(sx, sy, CELL, CELL);
+
+      // 텍스트
+      let txt = '';
+      if(isCenterCell){
+        txt = isCenter ? (data.root.text||'') : (child?.text||'');
+      } else {
+        if(isCenter){
+          const chIdx2 = chMap[si];
+          txt = chIdx2 >= 0 ? (data.ch1[chIdx2]?.text||'') : '';
+        } else {
+          const subMap = [0,1,2,3,-1,4,5,6,7];
+          const subIdx = subMap[si];
+          const subNode = subIdx >= 0 ? subChildren[subIdx] : null;
+          txt = subNode?.text || '';
+          // 손자 노드(하위)는 배경 더 연하게 표시
+          if(subNode?._isSub && !isCenterCell){
+            ctx.fillStyle = lightColor;
+            ctx.fillRect(sx, sy, CELL, CELL);
+            ctx.strokeStyle = '#aaa';
+            ctx.lineWidth = 0.7;
+            ctx.strokeRect(sx, sy, CELL, CELL);
+          }
+        }
+      }
+
+      if(txt){
+        // 중앙 블록 주변 셀은 흰 텍스트 (진한 배경이므로)
+        const pastelTxt=['#0D47A1','#880E4F','#1B5E20','#BF360C','#311B92','#006064','#33691E','#3E2723'];
+        const chIdxTxt = chMap[si];
+        // 가운데 핵심주제(isCenter+isCenterCell)만 흰글자, 나머지 모두 검정
+        ctx.fillStyle = (isCenter && isCenterCell) ? '#fff' : '#000';
+        const _subMap2=[0,1,2,3,-1,4,5,6,7]; const _subIdx2=_subMap2[si]; const _isSubNode=!isCenter&&!isCenterCell&&subChildren&&subChildren[_subIdx2]?._isSub;
+        const fSize = isCenterCell ? 11 : (_isSubNode ? Math.round(7*FS) : Math.round(7*FS));
+        ctx.font = `${isCenterCell?'bold ':''} ${fSize}px ${selectedFont}`;
+        ctx.textAlign = 'center';
+        // 셀 너비에 맞게 자동 줄바꿈
+        const maxW = CELL - 8;
+        const rawLines = txt.split(String.fromCharCode(10));
+        const lines = [];
+        rawLines.forEach(raw => {
+          let cur = '';
+          for(let ci=0; ci<raw.length; ci++){
+            const test = cur + raw[ci];
+            if(ctx.measureText(test).width > maxW && cur.length > 0){
+              lines.push(cur); cur = raw[ci];
+            } else { cur = test; }
+          }
+          if(cur) lines.push(cur);
+        });
+        const maxLines = isCenterCell ? 4 : 6;
+        const shown = lines.slice(0, maxLines);
+        // 잘렸으면 마지막 줄 끝에 (..) 추가
+        if(!isCenterCell && lines.length > maxLines){
+          let last = shown[shown.length-1];
+          while(last.length > 0 && ctx.measureText(last + '(..)').width > maxW){ last = last.slice(0,-1); }
+          shown[shown.length-1] = last + '(..)';
+        }
+        const lineH = fSize + 3;
+        // 외부 블록 핵심주제 칸: 괄호 안 텍스트 작게 분리 렌더링
+        if(!isCenter && isCenterCell && txt.includes('(') && txt.indexOf('(') > 0){
+          const parenIdx = txt.indexOf('(');
+          const mainTxt = txt.slice(0, parenIdx).trim();
+          const parenTxt = txt.slice(parenIdx).trim();
+          const mainLines = [];
+          let cur2 = '';
+          ctx.font = `bold ${fSize}px 'Malgun Gothic', sans-serif`;
+          for(let ci=0; ci<mainTxt.length; ci++){
+            const test2 = cur2 + mainTxt[ci];
+            if(ctx.measureText(test2).width > maxW && cur2.length > 0){ mainLines.push(cur2); cur2 = mainTxt[ci]; }
+            else { cur2 = test2; }
+          }
+          if(cur2) mainLines.push(cur2);
+          const smallF = 7;
+          const parenLines = [];
+          let cur3 = '';
+          ctx.font = `${smallF}px 'Malgun Gothic', sans-serif`;
+          for(let ci=0; ci<parenTxt.length; ci++){
+            const test3 = cur3 + parenTxt[ci];
+            if(ctx.measureText(test3).width > maxW && cur3.length > 0){ parenLines.push(cur3); cur3 = parenTxt[ci]; }
+            else { cur3 = test3; }
+          }
+          if(cur3) parenLines.push(cur3);
+          const mainLineH = fSize + 2;
+          const parenLineH = smallF + 1;
+          const gap = 1;
+          const bottomReserve = 22;
+          const availH = CELL - bottomReserve;
+          const totalH = mainLines.length*mainLineH + gap + parenLines.length*parenLineH;
+          const startY2 = sy + availH/2 - totalH/2 + mainLineH/2;
+          // 클리핑: 칸 안으로만 그리기
+          ctx.save();
+          ctx.beginPath();
+          ctx.rect(sx+1, sy+3, CELL-2, CELL-bottomReserve-2);
+          ctx.clip();
+          ctx.font = `bold ${fSize}px 'Malgun Gothic', sans-serif`;
+          ctx.fillStyle = '#000';
+          mainLines.forEach((ln, wi) => ctx.fillText(ln, sx+CELL/2, startY2 + wi*mainLineH));
+          const parenStartY = startY2 + mainLines.length*mainLineH + gap;
+          ctx.font = `${smallF}px 'Malgun Gothic', sans-serif`;
+          ctx.fillStyle = '#444';
+          parenLines.forEach((ln, wi) => ctx.fillText(ln, sx+CELL/2, parenStartY + wi*parenLineH));
+          ctx.restore();
+        } else {
+          const startY = sy + CELL/2 - (shown.length-1)*lineH/2;
+          // 클리핑: 칸 안으로만 그리기
+          ctx.save();
+          ctx.beginPath();
+          ctx.rect(sx+1, sy+3, CELL-2, CELL-6);
+          ctx.clip();
+          shown.forEach((ln,wi) => ctx.fillText(ln, sx+CELL/2, startY + wi*lineH));
+          ctx.restore();
+        }
+      }
+    }
+    // 외부 블록 중앙셀 하단에 구분선 + overflow 힌트 표시
+    if(!isCenter && data.overflowInfo){
+      const ovf = data.overflowInfo[cidx];
+      if(ovf){
+        const cx2 = bx + CELL + CELL/2;
+        const cellCenterY = by + CELL + CELL/2;
+
+        // 실제 렌더 줄 수 계산 (word-wrap 포함)
+        ctx.font = `bold 11px 'Malgun Gothic', sans-serif`;
+        const rawTitle = (child?.text||'');
+        const maxW2 = CELL - 8;
+        const rawLines2 = rawTitle.split(String.fromCharCode(10));
+        const wrappedLines = [];
+        rawLines2.forEach(raw => {
+          let cur = '';
+          for(let ci=0; ci<raw.length; ci++){
+            const test = cur + raw[ci];
+            if(ctx.measureText(test).width > maxW2 && cur.length > 0){
+              wrappedLines.push(cur); cur = raw[ci];
+            } else { cur = test; }
+          }
+          if(cur) wrappedLines.push(cur);
+        });
+        const lineH2 = 14;
+        const totalTxtH = wrappedLines.length * lineH2;
+        const maxTitleW2 = Math.max(...wrappedLines.map(l => ctx.measureText(l).width), 20);
+
+        // 셀 하단 경계
+        const cellMaxY = by + CELL * 2;
+        // 선과 숫자가 셀 안에 들어오도록 clamp
+        const textBottomY = cellCenterY + totalTxtH/2;
+        const lineY2 = Math.min(textBottomY + 5, cellMaxY - 16);
+        const ovfNumY = Math.min(lineY2 + 10, cellMaxY - 4);
+        const halfW = Math.min(maxTitleW2/2 + 4, CELL/2 - 4);
+        // 클리핑: 선/숫자가 핵심주제 칸 안에서만 보이게
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(bx+CELL+1, by+CELL+1, CELL-2, CELL-2);
+        ctx.clip();
+        ctx.strokeStyle = '#666';
+        ctx.lineWidth = 0.7;
+        ctx.beginPath();
+        ctx.moveTo(cx2 - halfW, lineY2);
+        ctx.lineTo(cx2 + halfW, lineY2);
+        ctx.stroke();
+        ctx.fillStyle = '#888';
+        ctx.font = `7px 'Malgun Gothic', sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.fillText(ovf, cx2, ovfNumY);
+        ctx.restore();
+      }
+    }
+
+    // 블록 외곽선
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(bx, by, BLOCK, BLOCK);
+  }
+}
+
+async function copyMatrixToClipboard(){
+  const canvas = document.getElementById('matrix-canvas');
+  try{
+    canvas.toBlob(async blob => {
+      const item = new ClipboardItem({'image/png': blob});
+      await navigator.clipboard.write([item]);
+      showToast('📋 클립보드에 복사됐어요!');
+    });
+  } catch(e){
+    showToast('❌ 복사 실패: ' + e.message);
+  }
+}
+
+function downloadMatrix(){
+  const canvas = document.getElementById('matrix-canvas');
+  const link = document.createElement('a');
+  link.download = '9matrix_' + (nodes.find(n=>n.parentId===null)?.text||'마인드맵') + '.png';
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+}
+
+// ── 관리자 패널 ──────────────────────────────────────────
+async function showAdminPanel(){
+  document.getElementById('admin-panel').style.display = 'flex';
+  const db = initFirebase(); if(!db) return;
+  const statsEl = document.getElementById('admin-stats');
+  const listEl = document.getElementById('admin-list');
+  statsEl.innerHTML = '불러오는 중...';
+  listEl.innerHTML = '';
+  try{
+    const snap = await db.ref('members').once('value');
+    const members = snap.val() || {};
+    const list = Object.entries(members);
+    const now = Date.now();
+    const thirtyDays = 30*24*60*60*1000;
+    const thisMonth = new Date(); thisMonth.setDate(1); thisMonth.setHours(0,0,0,0);
+    const today = new Date(); today.setHours(0,0,0,0);
+    const activeCount = list.filter(([,m])=>m.lastLogin&&(now-m.lastLogin)<thirtyDays).length;
+    const dormantCount = list.filter(([,m])=>m.lastLogin&&(now-m.lastLogin)>=thirtyDays).length;
+    const newThisMonth = list.filter(([,m])=>m.joinedAt&&m.joinedAt>=thisMonth.getTime()).length;
+    const newToday = list.filter(([,m])=>m.joinedAt&&m.joinedAt>=today.getTime()).length;
+    const totalMaps = list.reduce((s,[,m])=>s+(m.mapCount||0),0);
+    statsEl.innerHTML = `
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center;">
+        <div><div style="font-size:22px;font-weight:bold;color:#fff;">${list.length}</div><div style="font-size:11px;color:#81c784;">총 회원</div></div>
+        <div><div style="font-size:22px;font-weight:bold;color:#4fc3f7;">${activeCount}</div><div style="font-size:11px;color:#81c784;">활성(30일)</div></div>
+        <div><div style="font-size:22px;font-weight:bold;color:#ff8a65;">${dormantCount}</div><div style="font-size:11px;color:#81c784;">휴면</div></div>
+        <div><div style="font-size:18px;font-weight:bold;color:#ce93d8;">${newThisMonth}</div><div style="font-size:11px;color:#81c784;">이번달 신규</div></div>
+        <div><div style="font-size:18px;font-weight:bold;color:#a5d6a7;">${newToday}</div><div style="font-size:11px;color:#81c784;">오늘 신규</div></div>
+        <div><div style="font-size:18px;font-weight:bold;color:#fff176;">${totalMaps}</div><div style="font-size:11px;color:#81c784;">총 맵 수</div></div>
+      </div>`;
+    if(list.length===0){
+      listEl.innerHTML='<div style="color:#555;font-size:13px;text-align:center;padding:20px;">가입한 회원이 없어요</div>';
+      return;
+    }
+    list.sort((a,b)=>(b[1].joinedAt||0)-(a[1].joinedAt||0));
+    list.forEach(([uid,info],i)=>{
+      const joinDate=info.joinedAt?new Date(info.joinedAt).toLocaleDateString('ko-KR'):'-';
+      const lastLogin=info.lastLogin?new Date(info.lastLogin).toLocaleDateString('ko-KR'):'-';
+      const lastSaved=info.lastSaved?new Date(info.lastSaved).toLocaleDateString('ko-KR'):'-';
+      const isActive=info.lastLogin&&(now-info.lastLogin)<thirtyDays;
+      const statusColor=isActive?'#4fc3f7':'#ff8a65';
+      const statusText=isActive?'활성':'휴면';
+      const mapCount=info.mapCount||0;
+      const div=document.createElement('div');
+      div.style.cssText='background:#0d1a0d;border:1px solid #2a5a2a;border-radius:8px;padding:12px 14px;display:flex;flex-direction:column;gap:6px;';
+      div.innerHTML=`
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <span style="color:#c8e6c9;font-size:13px;font-weight:bold;">${i+1}. ${info.email||'이메일 없음'}</span>
+          <span style="color:${statusColor};font-size:11px;background:${statusColor}22;padding:2px 8px;border-radius:10px;">${statusText}</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;font-size:11px;color:#666;">
+          <span>📅 가입일: ${joinDate}</span>
+          <span>🔑 최근 로그인: ${lastLogin}</span>
+          <span>💾 마지막 저장: ${lastSaved}</span>
+          <span>🗺️ 저장한 맵: ${mapCount}개</span>
+        </div>
+        <div style="display:flex;justify-content:flex-end;">
+          <button onclick="sendPwReset('${info.email}')" style="background:#1a3a2a;color:#81c784;border:1px solid #2a5a2a;border-radius:6px;padding:4px 12px;font-size:12px;cursor:pointer;font-family:inherit;">🔐 비밀번호 재설정 메일 발송</button>
+        </div>`;
+      listEl.appendChild(div);
+    });
+  } catch(e){ statsEl.textContent='불러오기 실패: '+e.message; }
+}
+
+async function sendPwReset(email){
+  if(!email){ alert('이메일 정보가 없어요'); return; }
+  if(!confirm(email+' 으로 비밀번호 재설정 메일을 보낼까요?')) return;
+  try{
+    await firebase.auth().sendPasswordResetEmail(email);
+    showToast('✅ '+email+' 으로 재설정 메일을 보냈어요!');
+  } catch(e){ alert('발송 실패: '+e.message); }
+}
+
+function closeAdminPanel(){
+  document.getElementById('admin-panel').style.display='none';
+}
+
+let isSignupMode = false;
+
+function toggleSignup(){
+  isSignupMode = !isSignupMode;
+  document.getElementById('login-subtitle').textContent = isSignupMode
+    ? '이메일과 비밀번호로 회원가입하세요' : '로그인하고 나만의 마인드맵을 시작하세요';
+  document.getElementById('login-btn').textContent = isSignupMode ? '회원가입' : '로그인';
+  document.querySelector('#login-box .btn-secondary').textContent = isSignupMode
+    ? '이미 계정이 있으신가요? 로그인' : '계정이 없으신가요? 회원가입';
+  document.getElementById('login-err').textContent = '';
+}
+
+async function doLogin(){
+  const email = document.getElementById('login-email').value.trim();
+  const pw = document.getElementById('login-pw').value;
+  const err = document.getElementById('login-err');
+  const btn = document.getElementById('login-btn');
+  if(!email || !pw){ err.textContent = '이메일과 비밀번호를 입력해주세요'; return; }
+  btn.textContent = '처리 중...'; btn.disabled = true;
+  try{
+    const auth = firebase.auth();
+    if(isSignupMode){
+      const cred = await auth.createUserWithEmailAndPassword(email, pw);
+      // 회원 정보 DB에 저장
+      const db2 = initFirebase();
+      if(db2 && cred.user){
+        await db2.ref('members/' + cred.user.uid).set({
+          email: cred.user.email,
+          joinedAt: Date.now()
+        });
+      }
+    } else {
+      const signInCred = await auth.signInWithEmailAndPassword(email, pw);
+      // 로그인 시에도 회원 정보 저장 (기존 회원 대응)
+      const db3 = initFirebase();
+      if(db3 && signInCred.user){
+        await db3.ref('members/' + signInCred.user.uid).set({
+          email: signInCred.user.email,
+          joinedAt: signInCred.user.metadata.creationTime
+            ? new Date(signInCred.user.metadata.creationTime).getTime()
+            : Date.now(),
+          lastLogin: Date.now()
+        });
+      }
+    }
+  } catch(e){
+    const msg = {
+      'auth/user-not-found': '등록되지 않은 이메일이에요',
+      'auth/wrong-password': '비밀번호가 틀렸어요',
+      'auth/email-already-in-use': '이미 사용 중인 이메일이에요',
+      'auth/weak-password': '비밀번호는 6자 이상이어야 해요',
+      'auth/invalid-email': '이메일 형식이 올바르지 않아요',
+      'auth/invalid-credential': '이메일 또는 비밀번호가 틀렸어요',
+    }[e.code] || e.message;
+    err.textContent = msg;
+    btn.textContent = isSignupMode ? '회원가입' : '로그인';
+    btn.disabled = false;
+  }
+}
+
+function doLogout(){
+  if(!confirm('로그아웃 하시겠어요?')) return;
+  const keyBtn = document.getElementById('key-reset-btn');
+  if(keyBtn) keyBtn.style.display = 'none';
+  const adminBtn = document.getElementById('admin-btn');
+  if(adminBtn) adminBtn.style.display = 'none';
+  closeAdminPanel();
+  firebase.auth().signOut();
+}
+
+// 로그인 상태 감지 → 오버레이 제어
+document.addEventListener('DOMContentLoaded', ()=>{
+  // Enter 키 로그인
+  ['login-email','login-pw'].forEach(id=>{
+    document.getElementById(id).addEventListener('keydown', e=>{ if(e.key==='Enter') doLogin(); });
+  });
+
+  // Firebase가 준비될 때까지 기다렸다가 Auth 상태 감지
+  function waitFirebaseAndInitAuth(retry=0){
+    if(retry > 20){ console.error('Firebase 로드 실패'); return; }
+    if(typeof firebase === 'undefined' || typeof FB_CONFIG === 'undefined'){
+      setTimeout(()=> waitFirebaseAndInitAuth(retry+1), 200);
+      return;
+    }
+    try{
+      if(!firebase.apps.length) firebase.initializeApp(FB_CONFIG);
+      firebase.auth().onAuthStateChanged(user=>{
+        const overlay = document.getElementById('login-overlay');
+        const isOwner = user && user.email === 'yon819@naver.com';
+        if(user){
+          overlay.style.display = 'none';
+          showToast('👋 ' + user.email + ' 로그인됨');
+          const keyBtn = document.getElementById('key-reset-btn');
+          const migrateBtn = document.getElementById('migrate-btn');
+          if(keyBtn) keyBtn.style.display = 'none';
+          if(migrateBtn) migrateBtn.style.display = 'none';
+
+          // 로그인할 때마다 회원 정보 DB에 저장 (관리자 패널용)
+          try{
+            const db0 = initFirebase();
+            if(db0 && user){
+              db0.ref('members/' + user.uid).set({
+                email: user.email,
+                joinedAt: user.metadata?.creationTime
+                  ? new Date(user.metadata.creationTime).getTime() : Date.now(),
+                lastLogin: Date.now()
+              });
+            }
+          } catch(e){}
+
+          // 로그인 즉시 완전 초기화 (폴더, 맵 모두 리셋)
+          maps = [createMapData('맵1')];
+          activeMapId = maps[0].id;
+          folders = [];
+          folderIdCounter = 1;
+          loadMapData(maps[0]);
+          renderMapTabs();
+          render();
+
+          setTimeout(async ()=>{
+            const db = initFirebase();
+            const uid = firebase.auth().currentUser?.uid;
+            if(!db || !uid) return;
+
+            if(isOwner){
+              // 주인: 버튼 표시 후 데이터 불러오기
+              if(keyBtn) keyBtn.style.display = '';
+              if(migrateBtn) migrateBtn.style.display = '';
+              const adminBtn = document.getElementById('admin-btn');
+              if(adminBtn) adminBtn.style.display = '';
+              cloudLoad();
+            } else {
+              // 일반 회원: Firebase에서 내 데이터 확인
+              const mySnap = await db.ref('users/' + uid + '/mindmap/data').once('value');
+              const d = mySnap.val();
+              // ownerUid가 내 uid와 일치하는 경우만 불러오기
+              if(d && d.ownerUid && d.ownerUid === uid){
+                cloudLoad();
+              } else {
+                // 없거나 남의 데이터면 빈 화면 유지
+                showToast('✨ 새 마인드맵을 시작해요!');
+              }
+            }
+          }, 500);
+        } else {
+          overlay.style.display = 'flex';
+          document.getElementById('login-btn').textContent = isSignupMode ? '회원가입' : '로그인';
+          document.getElementById('login-btn').disabled = false;
+        }
+      });
+    } catch(e){ console.error('Auth init error:', e); }
+  }
+  waitFirebaseAndInitAuth();
+});
+
+
+async function migrateOldData(){
+  if(!confirm('기존 마인드맵을 내 계정으로 가져올까요?\n(딱 한 번만 하면 돼요)')) return;
+  const db = initFirebase(); if(!db) return;
+  const uid = firebase.auth().currentUser?.uid; if(!uid) return;
+  try{
+    const oldSnap = await db.ref('mindmap/data').once('value');
+    if(!oldSnap.val()){ showToast('가져올 데이터가 없어요'); return; }
+    await db.ref('users/' + uid + '/mindmap/data').set(oldSnap.val());
+    showToast('✅ 기존 마인드맵을 내 계정으로 가져왔어요!');
+    document.getElementById('migrate-btn').style.display = 'none';
+    cloudLoad();
+  } catch(e){ alert('가져오기 실패: ' + e.message); }
+}
+
 function initFirebase(){
   if(fbDb) return fbDb;
   try{
@@ -2510,13 +3459,23 @@ async function cloudSave(){
     // 현재 활성 맵 노드 업데이트
     saveCurrentToMap();
     // 전체 맵 탭 저장
+    const uid = firebase.auth().currentUser?.uid || 'guest';
     const saveData = {
       maps: maps.map(m => ({...m, nodes: JSON.parse(JSON.stringify(m.nodes))})),
       activeMapId,
       folders, folderIdCounter,
-      savedAt: Date.now()
+      savedAt: Date.now(),
+      ownerUid: uid
     };
-    await db.ref('mindmap/data').set(saveData);
+    await db.ref('users/' + uid + '/mindmap/data').set(saveData);
+    // 관리자용: 맵 개수 및 마지막 저장일 업데이트
+    const currentUser = firebase.auth().currentUser;
+    if(currentUser && uid !== 'guest'){
+      await db.ref('members/' + uid).update({
+        mapCount: maps.length,
+        lastSaved: Date.now()
+      });
+    }
     showToast(`✅ 전체 ${maps.length}개 맵이 클라우드에 저장됐어요!`);
   }catch(e){ alert('저장 실패: '+e.message); }
   finally{ btn.textContent=orig; btn.disabled=false; }
@@ -2527,9 +3486,22 @@ async function cloudLoad(){
   const btn=document.querySelector('[onclick="cloudLoad()"]');
   const orig=btn.textContent; btn.textContent='🔄 불러오는 중...'; btn.disabled=true;
   try{
-    const snap=await db.ref('mindmap/data').once('value');
+    const uid = firebase.auth().currentUser?.uid || 'guest';
+    const snap=await db.ref('users/' + uid + '/mindmap/data').once('value');
     const d=snap.val();
     if(!d){ showToast('저장된 데이터가 없어요'); return; }
+    // 주인 계정은 ownerUid 체크 없이 항상 불러오기
+    // 일반 회원은 ownerUid가 없거나 다르면 빈 화면
+    const currentEmail = firebase.auth().currentUser?.email;
+    const isOwnerLoad = currentEmail === 'yon819@naver.com';
+    if(!isOwnerLoad && (!d.ownerUid || d.ownerUid !== uid)){
+      showToast('✨ 새 마인드맵을 시작해요!');
+      maps = [createMapData('새 마인드맵')];
+      activeMapId = maps[0].id;
+      loadMapData(maps[0]);
+      renderMapTabs();
+      return;
+    }
 
     // 새 형식 (전체 맵 탭)
     if(d.maps && Array.isArray(d.maps)){
@@ -2558,6 +3530,11 @@ if(!CanvasRenderingContext2D.prototype.roundRect){
 
 function buildCanvas(imgCache={}){
   const DPR=2, pad=60;
+  // 실제 노드 너비 수집 (arc-curve 선 연결에 사용)
+  const nodeWidths={};
+  document.querySelectorAll('#nodes-div [data-id]').forEach(el=>{
+    nodeWidths[el.dataset.id]=el.offsetWidth;
+  });
 
   // 임시 캔버스로 폰트 측정
   const tmp=document.createElement('canvas');
@@ -2645,6 +3622,8 @@ function buildCanvas(imgCache={}){
         if(ls==='straight'){ ctx.moveTo(px,py); ctx.lineTo(nx,ny); }
         else if(ls==='elbow'){ const mx=(px+nx)/2; ctx.moveTo(px,py); ctx.lineTo(mx,py); ctx.lineTo(mx,ny); ctx.lineTo(nx,ny); }
         else if(ls==='sweep'){ ctx.moveTo(px,py); ctx.bezierCurveTo(px+(nx-px)*0.4,py,nx-(nx-px)*0.4,ny,nx,ny); }
+        else if(ls==='arc-curve'){ const sign2=nx>px?1:-1; const pOff=nodeWidths[node.parentId]?nodeWidths[node.parentId]/2:65; const cOff=nodeWidths[node.id]?nodeWidths[node.id]/2:65; const sx=px+sign2*pOff,ex=nx-sign2*cOff; ctx.moveTo(sx,py); ctx.quadraticCurveTo(sx,ny,ex,ny); }
+        else if(ls==='arc-curve-v'){ const signH2=nx>px?1:-1; const signV2=ny>py?1:-1; const pOffW2=nodeWidths[node.parentId]?nodeWidths[node.parentId]/2:65; const cOffH2=20; const sx2=px+signH2*pOffW2; const ey2=ny-signV2*cOffH2; ctx.moveTo(sx2,py); ctx.quadraticCurveTo(nx,py,nx,ey2); }
         else { const cpx=px+(nx-px)*0.55; ctx.moveTo(px,py); ctx.bezierCurveTo(cpx,py,cpx,ny,nx,ny); }
         ctx.strokeStyle=color; ctx.lineWidth=width; ctx.lineCap='round'; ctx.stroke();
       });
