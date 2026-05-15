@@ -1,5 +1,28 @@
 {
   "database": {
     "rules": "database.rules.json"
+  },
+  "hosting": {
+    "site": "richonboard",
+    "public": ".",
+    "ignore": [
+      "firebase.json",
+      ".firebaserc",
+      "**/.*",
+      "**/node_modules/**",
+      "database.rules.json",
+      "mindmap1.html",
+      "mindmap2.html",
+      "mindmap8.html",
+      "mindmap9.html",
+      "mindmap10.html",
+      "mindmap(1).html"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/mindmap.html"
+      }
+    ]
   }
 }
