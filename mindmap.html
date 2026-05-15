@@ -2142,21 +2142,51 @@ function fitView(){
 
 
 // ── AI API 호출 (OpenAI) ──────────────────────────────────
-let _openaiKey = localStorage.getItem('mm_oai') || '';
+let _openaiKey = '';
 let _workingModel = null;
+let _isOwner = false;  // 관리자 여부 (로그인 시 설정됨)
 
-function resetApiKey(){
-  _openaiKey = ''; _workingModel = null;
-  localStorage.removeItem('mm_oai');
-  showToast('🔑 API 키가 초기화됐어요.');
+// Firebase에서 관리자가 저장한 API 키 로드
+async function loadApiKeyFromFirebase(){
+  try {
+    const db = initFirebase();
+    if(!db) return;
+    const snap = await db.ref('config/openai_key').once('value');
+    const key = snap.val();
+    if(key) _openaiKey = key;
+  } catch(e){ console.log('API 키 로드 실패:', e); }
+}
+
+async function resetApiKey(){
+  if(!_isOwner){
+    showToast('🔒 관리자만 API 키를 변경할 수 있어요.');
+    return;
+  }
+  const key = await promptApiKey();
+  if(!key) return;
+  _openaiKey = key; _workingModel = null;
+  try {
+    const db = initFirebase();
+    if(db) await db.ref('config/openai_key').set(key);
+    showToast('🔑 API 키가 저장됐어요. 모든 사용자가 사용할 수 있어요.');
+  } catch(e){
+    showToast('❌ 키 저장 실패: ' + e.message);
+  }
 }
 
 async function geminiFetch(parts){
   if(!_openaiKey){
-    const key = await promptApiKey();
-    if(!key) throw new Error('취소됨');
-    _openaiKey = key;
-    localStorage.setItem('mm_oai', key);
+    if(_isOwner){
+      // 관리자: 키 입력 다이얼로그 → Firebase에 저장
+      const key = await promptApiKey();
+      if(!key) throw new Error('취소됨');
+      _openaiKey = key;
+      const db = initFirebase();
+      if(db) await db.ref('config/openai_key').set(key);
+    } else {
+      // 일반 사용자: 관리자에게 안내
+      throw new Error('관리자가 API 키를 설정해야 AI 기능을 사용할 수 있어요. 잠시 후 다시 시도해주세요.');
+    }
   }
 
   const imagePart = parts.find(p => p.inline_data);
@@ -2192,9 +2222,13 @@ async function geminiFetch(parts){
     });
 
     if(r.status === 401){
-      _openaiKey = ''; localStorage.removeItem('mm_oai');
-      showToast('❌ API 키가 잘못됐어요. 🔑 키 재설정을 눌러주세요.');
-      return geminiFetch(parts);
+      _openaiKey = '';
+      if(_isOwner){
+        showToast('❌ API 키가 잘못됐어요. 🔑 키 재설정을 눌러주세요.');
+        return geminiFetch(parts);
+      } else {
+        throw new Error('관리자의 API 키가 만료됐어요. 관리자에게 알려주세요.');
+      }
     }
     if(r.status === 429) throw new Error('사용량 한도 초과예요. 잠시 후 다시 시도해보세요.');
     if(!r.ok){
@@ -2219,7 +2253,7 @@ function promptApiKey(){
           1. <a href="https://platform.openai.com/api-keys" target="_blank" style="color:#4ab8ff;">platform.openai.com/api-keys</a> 접속<br>
           2. <b style="color:#fff;">+ Create new secret key</b> 클릭<br>
           3. 생성된 키 복사 후 아래 붙여넣기<br>
-          <span style="color:#666;font-size:11px;">키는 이 기기 브라우저에만 저장돼요.</span>
+          <span style="color:#666;font-size:11px;">⚠️ 관리자 전용. 키는 Firebase에 안전하게 저장돼요.</span>
         </div>
         <input id="oai-key" type="password" placeholder="sk-..." value="${_openaiKey}"
           style="background:#111;border:1px solid #2a5a2a;border-radius:6px;color:#eee;font-size:12px;font-family:monospace;padding:10px;width:100%;outline:none;box-sizing:border-box;">
@@ -3337,6 +3371,9 @@ function doLogout(){
   if(keyBtn) keyBtn.style.display = 'none';
   const adminBtn = document.getElementById('admin-btn');
   if(adminBtn) adminBtn.style.display = 'none';
+  // API 키 및 관리자 상태 메모리에서 제거 (보안)
+  _openaiKey = '';
+  _isOwner = false;
   closeAdminPanel();
   firebase.auth().signOut();
 }
@@ -3360,6 +3397,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
       firebase.auth().onAuthStateChanged(user=>{
         const overlay = document.getElementById('login-overlay');
         const isOwner = user && user.email === 'yon819@naver.com';
+        _isOwner = isOwner;  // 전역 변수에 관리자 여부 저장 (API 키 보호용)
         if(user){
           overlay.style.display = 'none';
           showToast('👋 ' + user.email + ' 로그인됨');
@@ -3367,6 +3405,9 @@ document.addEventListener('DOMContentLoaded', ()=>{
           const migrateBtn = document.getElementById('migrate-btn');
           if(keyBtn) keyBtn.style.display = 'none';
           if(migrateBtn) migrateBtn.style.display = 'none';
+
+          // Firebase에서 관리자가 저장한 API 키 자동 로드 (모든 사용자 대상)
+          loadApiKeyFromFirebase();
 
           // 로그인할 때마다 회원 정보 DB에 저장 (관리자 패널용)
           try{
