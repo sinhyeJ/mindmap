@@ -1,0 +1,26 @@
+{
+  "rules": {
+    "config": {
+      "openai_key": {
+        ".read": "auth != null",
+        ".write": "auth != null && auth.token.email === 'yon819@naver.com'"
+      }
+    },
+    "users": {
+      "$uid": {
+        ".read": "$uid === auth.uid || auth.token.email === 'yon819@naver.com'",
+        ".write": "$uid === auth.uid || auth.token.email === 'yon819@naver.com'"
+      }
+    },
+    "members": {
+      ".read": "auth != null && auth.token.email === 'yon819@naver.com'",
+      "$uid": {
+        ".write": "$uid === auth.uid"
+      }
+    },
+    "mindmap": {
+      ".read": "auth.token.email === 'yon819@naver.com'",
+      ".write": "auth.token.email === 'yon819@naver.com'"
+    }
+  }
+}
