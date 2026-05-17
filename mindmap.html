@@ -2189,19 +2189,24 @@ async function geminiFetch(parts){
     }
   }
 
-  const imagePart = parts.find(p => p.inline_data);
-  const textPart  = parts.find(p => p.text);
-  const prompt    = textPart?.text || '';
-  const model     = imagePart ? 'gpt-4o' : 'gpt-4o-mini';
+  // 🆕 여러 이미지 지원: parts 안의 모든 inline_data 수집
+  const imageParts = parts.filter(p => p.inline_data);
+  const textPart   = parts.find(p => p.text);
+  const prompt     = textPart?.text || '';
+  const hasImages  = imageParts.length > 0;
+  const model      = hasImages ? 'gpt-4o' : 'gpt-4o-mini';
 
-  // 메시지 구성 (텍스트 or 이미지+텍스트)
-  const userContent = imagePart ? [
-    { type: 'image_url', image_url: { url: `data:${imagePart.inline_data.mime_type};base64,${imagePart.inline_data.data}` } },
+  // 메시지 구성 (모든 이미지 + 텍스트)
+  const userContent = hasImages ? [
+    ...imageParts.map(p => ({
+      type: 'image_url',
+      image_url: { url: `data:${p.inline_data.mime_type};base64,${p.inline_data.data}` }
+    })),
     { type: 'text', text: prompt }
   ] : prompt;
 
   updateLoadingText(
-    imagePart ? '🤖 GPT-4o로 이미지 분석 중...' : '🤖 GPT-4o로 분석 중...',
+    hasImages ? (imageParts.length > 1 ? `🤖 GPT-4o로 이미지 ${imageParts.length}개 통합 분석 중...` : '🤖 GPT-4o로 이미지 분석 중...') : '🤖 GPT-4o로 분석 중...',
     '잠시만 기다려주세요.'
   );
 
@@ -2215,9 +2220,9 @@ async function geminiFetch(parts){
       body: JSON.stringify({
         model: model || 'gpt-4o-mini',
         messages: [{ role: 'user', content: userContent }],
-        max_tokens: imagePart ? 16000 : 8000,
+        max_tokens: hasImages ? (imageParts.length > 1 ? 20000 : 16000) : 8000,
         temperature: 0.1,
-        ...(imagePart ? {} : { response_format: { type: 'json_object' } })
+        ...(hasImages ? {} : { response_format: { type: 'json_object' } })
       })
     });
 
@@ -2555,31 +2560,97 @@ function updateLoadingText(title, sub){
 
 // ── 🪄 이미지 → 마인드맵 (AI 자동 생성) ────────────────────
 function importFromImage(){
+  // 1단계: 단일 vs 여러 이미지 모드 선택
+  showImageImportModeModal();
+}
+
+function showImageImportModeModal(){
+  const ov = document.createElement('div');
+  ov.id = 'img-mode-modal';
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.88);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;';
+  ov.innerHTML = `
+    <div style="background:#1a1a1a;border:1px solid #555;border-radius:14px;padding:24px;width:100%;max-width:520px;display:flex;flex-direction:column;gap:16px;box-shadow:0 16px 60px rgba(0,0,0,0.9);">
+      <div style="font-size:16px;font-weight:bold;color:#c4b5fd;text-align:center;">🪄 이미지 → 마인드맵</div>
+      <div style="font-size:12px;color:#888;text-align:center;">어떻게 만드시겠어요?</div>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <button id="mode-single" style="background:#1a1a2e;color:#c4b5fd;border:1px solid #5a3fa0;border-radius:10px;padding:16px;cursor:pointer;font-family:inherit;text-align:left;display:flex;align-items:center;gap:12px;">
+          <div style="font-size:28px;">📷</div>
+          <div style="flex:1;">
+            <div style="font-size:14px;font-weight:bold;margin-bottom:3px;">단일 이미지</div>
+            <div style="font-size:11px;color:#999;">이미지 1개를 분석해서 마인드맵 생성</div>
+          </div>
+        </button>
+        <button id="mode-multi" style="background:#1a1a2e;color:#a0ffb0;border:1px solid #3fa05a;border-radius:10px;padding:16px;cursor:pointer;font-family:inherit;text-align:left;display:flex;align-items:center;gap:12px;">
+          <div style="font-size:28px;">📚</div>
+          <div style="flex:1;">
+            <div style="font-size:14px;font-weight:bold;margin-bottom:3px;">여러 이미지 → 하나의 마인드맵</div>
+            <div style="font-size:11px;color:#999;">여러 이미지를 분석해서 하나로 통합 (최대 5장)</div>
+          </div>
+        </button>
+      </div>
+      <button onclick="document.getElementById('img-mode-modal').remove()" style="background:#333;color:#aaa;border:1px solid #555;border-radius:7px;padding:9px;cursor:pointer;font-size:12px;font-family:inherit;">취소</button>
+    </div>`;
+  document.body.appendChild(ov);
+  document.getElementById('mode-single').onclick = ()=>{ ov.remove(); pickImages(false); };
+  document.getElementById('mode-multi').onclick = ()=>{ ov.remove(); pickImages(true); };
+}
+
+function pickImages(multi){
   const inp = document.createElement('input');
   inp.type = 'file';
   inp.accept = 'image/*';
+  if(multi) inp.multiple = true;
   inp.onchange = async e => {
-    const file = e.target.files[0]; if(!file) return;
-    const reader = new FileReader();
-    reader.onload = async ev => {
-      const base64 = ev.target.result.split(',')[1];
-      const mediaType = file.type || 'image/png';
-      const previewUrl = ev.target.result;
-      showImageCommandModal(base64, mediaType, previewUrl);
-    };
-    reader.readAsDataURL(file);
+    let files = Array.from(e.target.files);
+    if(!files.length) return;
+    if(files.length > 5){
+      showToast('⚠️ 최대 5장까지만 선택 가능해요. 처음 5장만 사용합니다.');
+      files = files.slice(0, 5);
+    }
+    const images = await Promise.all(files.map(file => {
+      return new Promise(resolve => {
+        const reader = new FileReader();
+        reader.onload = ev => {
+          resolve({
+            base64: ev.target.result.split(',')[1],
+            mediaType: file.type || 'image/png',
+            previewUrl: ev.target.result
+          });
+        };
+        reader.readAsDataURL(file);
+      });
+    }));
+    showImageCommandModal(images);
   };
   inp.click();
 }
 
-function showImageCommandModal(base64, mediaType, previewUrl){
+function showImageCommandModal(images){
+  // images: 배열 [{base64, mediaType, previewUrl}, ...] (단일이어도 배열)
+  // 하위 호환: 만약 옛 시그니처(base64, mediaType, previewUrl)로 호출되면 변환
+  if(typeof images === 'string'){
+    images = [{ base64: images, mediaType: arguments[1], previewUrl: arguments[2] }];
+  }
+  const isMulti = images.length > 1;
+  const previewsHtml = isMulti
+    ? `<div style="display:flex;gap:6px;overflow-x:auto;padding:4px;background:#0a0a0a;border-radius:8px;border:1px solid #333;">
+         ${images.map((img, i) => `
+           <div style="position:relative;flex-shrink:0;">
+             <img src="${img.previewUrl}" style="width:90px;height:90px;object-fit:cover;border-radius:6px;border:1px solid #444;background:#111;">
+             <div style="position:absolute;top:3px;right:3px;background:#000d;color:#fff;border-radius:50%;width:18px;height:18px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:bold;">${i+1}</div>
+           </div>
+         `).join('')}
+       </div>
+       <div style="font-size:11px;color:#a0ffb0;text-align:center;">📚 ${images.length}개 이미지를 하나의 마인드맵으로 통합</div>`
+    : `<img src="${images[0].previewUrl}" style="width:100%;max-height:200px;object-fit:contain;border-radius:8px;border:1px solid #333;background:#111;">`;
+
   const ov = document.createElement('div');
   ov.id = 'img-cmd-modal';
   ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.88);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;';
   ov.innerHTML = `
     <div style="background:#1a1a1a;border:1px solid #555;border-radius:14px;padding:24px;width:100%;max-width:560px;display:flex;flex-direction:column;gap:14px;box-shadow:0 16px 60px rgba(0,0,0,0.9);">
-      <div style="font-size:15px;font-weight:bold;color:#c4b5fd;">🪄 이미지 → 마인드맵</div>
-      <img src="${previewUrl}" style="width:100%;max-height:200px;object-fit:contain;border-radius:8px;border:1px solid #333;background:#111;">
+      <div style="font-size:15px;font-weight:bold;color:#c4b5fd;">🪄 ${isMulti ? `이미지 ${images.length}개 통합` : '이미지'} → 마인드맵</div>
+      ${previewsHtml}
       <div style="font-size:12px;color:#888;">명령을 입력하면 AI가 그에 맞게 마인드맵을 만들어요.</div>
       <div style="display:flex;flex-wrap:wrap;gap:7px;">
         <button onclick="imgSetPreset(this,'이 마인드맵과 똑같이 만들어줘 (구조와 글 모두 그대로)')"  style="background:#1a1a2e;color:#c4b5fd;border:1px solid #5a3fa0;border-radius:20px;padding:5px 12px;font-size:12px;cursor:pointer;font-family:inherit;">📋 똑같이 (구조·글)</button>
@@ -2603,7 +2674,7 @@ function showImageCommandModal(base64, mediaType, previewUrl){
   document.getElementById('img-cmd-ok').onclick = ()=>{
     const cmd = document.getElementById('img-cmd-input').value.trim();
     ov.remove();
-    runImageToMindmap(base64, mediaType, cmd);
+    runImageToMindmap(images, cmd);
   };
   document.getElementById('img-cmd-input').addEventListener('keydown', e=>{
     if((e.ctrlKey||e.metaKey) && e.key==='Enter'){ e.preventDefault(); document.getElementById('img-cmd-ok').click(); }
@@ -2619,17 +2690,60 @@ function imgSetPreset(btn, text){
   btn.style.background='#5a3fa0'; btn.style.color='#fff'; btn.style.borderColor='#9a7fd4';
 }
 
-async function runImageToMindmap(base64, mediaType, userCmd=''){
-  showLoadingOverlay('AI가 이미지를 분석하는 중...', '마인드맵 구조를 파악하고 있어요. 잠시만 기다려주세요.');
+async function runImageToMindmap(images, userCmd=''){
+  // 하위 호환: 만약 옛 시그니처(base64, mediaType, cmd)로 호출되면 변환
+  if(typeof images === 'string'){
+    images = [{ base64: images, mediaType: arguments[1] }];
+    userCmd = arguments[2] || '';
+  }
+  const isMulti = images.length > 1;
+
+  showLoadingOverlay(
+    isMulti ? `AI가 이미지 ${images.length}개를 분석/통합 중...` : 'AI가 이미지를 분석하는 중...',
+    isMulti ? '여러 이미지를 하나의 마인드맵으로 통합하고 있어요. 시간이 좀 더 걸려요.' : '마인드맵 구조를 파악하고 있어요. 잠시만 기다려주세요.'
+  );
 
   try {
-    // 명령어에 따라 프롬프트 선택
     const isCopy = /똑같|그대로|복사|추출|그냥|따라|동일|똑같이|같이만|원본|복원|재현/.test(userCmd);
 
     let prompt;
-    if(isCopy){
-      // 구조 그대로 추출 모드
-      prompt = `이 마인드맵 이미지를 분석해서 보이는 모든 노드와 계층 구조를 빠짐없이 JSON으로 추출하세요.
+    if(isMulti){
+      // 🆕 여러 이미지 통합 프롬프트
+      if(isCopy){
+        prompt = `${images.length}개의 마인드맵 이미지가 제공됐어요. 각 이미지의 모든 노드를 빠짐없이 추출해서 하나의 통합 마인드맵으로 만들어주세요.
+
+중요 규칙:
+- 모든 이미지의 텍스트 노드를 빠짐없이 포함
+- 텍스트를 절대 수정하거나 요약하지 마세요 (원문 그대로)
+- 중복되거나 비슷한 노드는 하나로 합치되 의미 보존
+- 각 이미지의 주제를 큰 카테고리로 묶어서 정리
+- 중심 노드는 "통합 마인드맵" 또는 공통 주제
+
+순수 JSON만 출력 (코드블록, 설명 절대 금지):
+{"root":{"text":"통합 마인드맵","children":[{"text":"카테고리","children":[{"text":"세부","children":[]}]}]}}`;
+      } else if(userCmd){
+        prompt = `${images.length}개의 이미지가 제공됐어요. 모든 이미지를 종합 분석해서 하나의 통합 마인드맵으로 만들어주세요.
+
+사용자 요청: ${userCmd}
+
+위 요청대로 모든 이미지를 통합하여 마인드맵을 만들어 순수 JSON만 출력 (코드블록 없이):
+{"root":{"text":"중심주제","children":[{"text":"1. 카테고리 (설명)","children":[{"text":"생각질문: ? / 인사이트: 문장1. 문장2 / 왜냐하면: 근거","children":[]}]}]}}`;
+      } else {
+        prompt = `${images.length}개의 이미지를 분석해서 하나의 통합 마인드맵으로 만들어주세요.
+
+순수 JSON만 출력 (코드블록 없이):
+{"root":{"text":"통합 마인드맵","children":[{"text":"1. 카테고리 (설명)","children":[{"text":"생각질문: ? / 인사이트: 문장1. 문장2 / 왜냐하면: 근거","children":[]}]}]}}
+
+규칙:
+- 1단계: 모든 이미지의 공통 주제를 묶은 카테고리 5~10개 (번호+제목+설명)
+- 2단계: 각 카테고리 아래에 생각질문/인사이트/왜냐하면
+- 모든 이미지의 핵심을 통합·요약 (단순 나열 X)
+- 순수 JSON만 출력`;
+      }
+    } else {
+      // 기존 단일 이미지 프롬프트 (그대로 유지)
+      if(isCopy){
+        prompt = `이 마인드맵 이미지를 분석해서 보이는 모든 노드와 계층 구조를 빠짐없이 JSON으로 추출하세요.
 
 중요 규칙:
 - 이미지에 보이는 모든 텍스트 노드를 빠짐없이 포함하세요
@@ -2640,17 +2754,15 @@ async function runImageToMindmap(base64, mediaType, userCmd=''){
 
 순수 JSON만 출력 (코드블록, 설명 절대 금지):
 {"root":{"text":"중심노드텍스트","children":[{"text":"자식노드","children":[{"text":"손자노드","children":[]}]}]}}`;
-    } else if(userCmd){
-      // 사용자 커스텀 명령
-      prompt = `이 이미지를 분석하세요.
+      } else if(userCmd){
+        prompt = `이 이미지를 분석하세요.
 
 사용자 요청: ${userCmd}
 
 위 요청대로 마인드맵을 만들어 순수 JSON만 출력 (코드블록 없이):
 {"root":{"text":"중심주제","children":[{"text":"1. 카테고리 (설명)","children":[{"text":"생각질문: ? / 인사이트: 문장1. 문장2 / 왜냐하면: 근거","children":[]}]}]}}`;
-    } else {
-      // 기본 분석 모드
-      prompt = `이미지를 분석해서 마인드맵 JSON으로 변환하세요.
+      } else {
+        prompt = `이미지를 분석해서 마인드맵 JSON으로 변환하세요.
 
 순수 JSON만 출력 (코드블록 없이):
 {"root":{"text":"중심주제","children":[{"text":"1. 카테고리 (설명)","children":[{"text":"생각질문: ? / 인사이트: 문장1. 문장2 / 왜냐하면: 근거","children":[]}]}]}}
@@ -2659,12 +2771,16 @@ async function runImageToMindmap(base64, mediaType, userCmd=''){
 - 1단계: 번호+카테고리명+(1줄설명), 5~8개
 - 2단계: 생각질문/인사이트/왜냐하면
 - 순수 JSON만 출력`;
+      }
     }
 
-    const raw = await geminiFetch([
-      { inline_data: { mime_type: mediaType, data: base64 } },
+    // 모든 이미지를 parts에 포함
+    const parts = [
+      ...images.map(img => ({ inline_data: { mime_type: img.mediaType, data: img.base64 } })),
       { text: prompt }
-    ]);
+    ];
+
+    const raw = await geminiFetch(parts);
 
     // JSON 파싱
     let parsed;
@@ -2673,7 +2789,7 @@ async function runImageToMindmap(base64, mediaType, userCmd=''){
 
     // 마인드맵으로 변환
     buildFromAIJson(parsed.root);
-    showToast('✅ AI가 마인드맵을 생성했어요!');
+    showToast(isMulti ? `✅ ${images.length}개 이미지를 통합한 마인드맵 생성 완료!` : '✅ AI가 마인드맵을 생성했어요!');
 
   } catch(err) {
     showToast('❌ 오류: ' + err.message);
